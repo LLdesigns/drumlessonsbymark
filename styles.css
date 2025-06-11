@@ -124,6 +124,7 @@ h1, h2 {
     display: flex;
     align-items: center;
     gap: 0.7rem;
+    min-width: 0;
 }
 .logo-img {
     display: inline-block;
@@ -137,6 +138,10 @@ h1, h2 {
     font-family: inherit;
 }
 .navbar-title {
+    flex-shrink: 1;
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: 'Jost', Arial, sans-serif;
     font-size: 2rem;
     font-weight: 700;
@@ -187,13 +192,33 @@ h1, h2 {
     transform: scaleX(1);
 }
 
+.navbar-menu-btn {
+    margin-right: 24px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+.navbar-menu-btn:focus, .navbar-menu-btn:active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
 @media (max-width: 900px) {
     .navbar-demo {
         padding: 0 1rem;
         height: 60px;
     }
     .navbar-title {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
+        white-space: nowrap;
+        letter-spacing: 0.01em;
+        max-width: 48vw;
+    }
+    .navbar-logo {
+        gap: 0.3rem;
     }
     .navbar-links {
         gap: 1.2rem;
@@ -205,14 +230,7 @@ h1, h2 {
         font-size: 1.5rem;
     }
     .navbar-menu-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: none;
-        border: none;
-        cursor: pointer;
-        margin-left: 1rem;
-        z-index: 102;
+        margin-right: 24px;
     }
     .navbar-sidepanel {
         position: fixed;
@@ -289,6 +307,16 @@ h1, h2 {
         width: 100%;
         text-align: center;
     }
+    .info-section {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+}
+@media (max-width: 600px) {
+    .navbar-title {
+        font-size: 0.85rem;
+        max-width: 38vw;
+    }
 }
 
 @media (min-width: 901px) {
@@ -311,14 +339,6 @@ h1, h2 {
     margin-right: 0.7rem;
     display: inline-block;
     vertical-align: middle;
-}
-
-.navbar-title {
-    font-family: 'Unbounded', Arial, sans-serif;
-    font-weight: 300;
-    font-size: 2rem;
-    color: var(--primary);
-    letter-spacing: 0.04em;
 }
 
 .hero-demo-section {
@@ -472,12 +492,15 @@ h1, h2 {
     padding: 2rem 0;
     margin-bottom: 0;
     padding-bottom: 120px;
+    padding-left: 24px;
+    padding-right: 24px;
 }
 
 .accordion {
     max-width: 1400px;
     margin: 0 auto;
     padding-left: 0;
+    padding-right: 0;
 }
 
 .accordion-item {

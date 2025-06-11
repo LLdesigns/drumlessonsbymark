@@ -37,41 +37,39 @@ if (menuBtn && sidePanel && closeBtn) {
     });
 } 
 
-// Accordion Dropdown Logic for Info Section
-// Get all accordion items
+// Accordion Highlight on Scroll - Always Open, Highlight Centered
 const accordionItems = document.querySelectorAll('.accordion-item');
 
-// On page load, open only the first accordion item
-accordionItems.forEach((item, idx) => {
-    if (idx === 0) {
-        item.classList.add('open');
-    } else {
-        item.classList.remove('open');
-    }
-});
-
-// Add event listeners to each accordion item
-accordionItems.forEach((item, idx) => {
-    // Open on mouseenter (hover)
-    item.addEventListener('mouseenter', () => {
-        item.classList.add('open');
-        console.log(`Accordion item ${idx + 1} opened by mouseenter.`);
-    });
-    // Open on focus (keyboard navigation)
-    item.addEventListener('focus', () => {
-        item.classList.add('open');
-        console.log(`Accordion item ${idx + 1} opened by focus.`);
-    });
-    // Toggle open/close on click
-    item.addEventListener('click', () => {
-        item.classList.toggle('open');
-        if (item.classList.contains('open')) {
-            console.log(`Accordion item ${idx + 1} opened by click.`);
-        } else {
-            console.log(`Accordion item ${idx + 1} closed by click.`);
+function getCenteredAccordionItem() {
+    let minDiff = Infinity;
+    let centered = null;
+    const viewportCenter = window.innerHeight / 2;
+    accordionItems.forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const itemCenter = rect.top + rect.height / 2;
+        const diff = Math.abs(itemCenter - viewportCenter);
+        if (diff < minDiff) {
+            minDiff = diff;
+            centered = item;
         }
     });
-});
+    return centered;
+}
+
+function highlightCenteredAccordion() {
+    const centered = getCenteredAccordionItem();
+    accordionItems.forEach(item => {
+        if (item === centered) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+window.addEventListener('scroll', highlightCenteredAccordion);
+window.addEventListener('resize', highlightCenteredAccordion);
+document.addEventListener('DOMContentLoaded', highlightCenteredAccordion);
 
 // Smooth scroll to info-section when 'What You Learn' is clicked in navbar
 const whatYouLearnLinks = Array.from(document.querySelectorAll('a')).filter(a => a.textContent.trim() === 'What You Learn');
@@ -126,7 +124,7 @@ aboutLinks.forEach(link => {
 });
 
 // 2. Hero 'Contact Me' button scrolls to contact form
-const heroContactBtn = document.querySelector('.hero-buttons .btn-primary');
+const heroContactBtn = document.getElementById('contactBtn');
 if (heroContactBtn) {
     heroContactBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -139,7 +137,7 @@ if (heroContactBtn) {
 }
 
 // 3. Hero 'View Lessons' button scrolls to info section and opens all accordions with animation
-const heroLessonsBtn = document.querySelector('.hero-buttons .btn-secondary');
+const heroLessonsBtn = document.getElementById('viewLessonsBtn');
 if (heroLessonsBtn) {
     heroLessonsBtn.addEventListener('click', (e) => {
         e.preventDefault();

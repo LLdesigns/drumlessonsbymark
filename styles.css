@@ -272,12 +272,13 @@ h1, h2 {
     .sidepanel-links a:hover {
         color: var(--primary);
     }
-    .hero-content {
+    .hero-content {        
         text-align: center;
         align-items: center;
     }
     .hero-title {
-        font-size: 2.2rem;
+        width: 100%;
+        font-size: 64px;
     }
     .hero-buttons {
         flex-direction: column;
@@ -403,23 +404,49 @@ h1, h2 {
         padding: 2.5rem 0 1.5rem 0;
     }
     .hero-content {
-        padding: 2rem 1rem 2rem 1.2rem;
-        max-width: 100%;
+        padding-left: 18px;
+        padding-right: 18px;
+        text-align: left;
+        align-items: flex-start;
     }
     .hero-title {
-        font-size: 2.2rem;
+        font-size: 2.4rem;
+        text-align: left;
+        margin-left: 0;
     }
-    .hero-subtitle {
-        font-size: 1.1rem;
+    .hero-subtitle, .hero-desc {
+        text-align: left;
+        margin-left: 0;
     }
     .hero-buttons {
         flex-direction: column;
         gap: 0.7rem;
         width: 100%;
+        align-items: flex-start;
+        margin-left: 0;
     }
-    .btn {
+    .hero-btn {
+        width: auto;
+        min-width: 180px;
+        text-align: left;
+        font-size: 1.1rem;
+        padding: 1rem 18px;
+        box-sizing: border-box;
+        margin-left: 0;
+    }
+    .info-section {        
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+    .accordion {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .accordion-item {
+        margin-left: 0;
+        margin-right: 0;
         width: 100%;
-        text-align: center;
+        box-sizing: border-box;
     }
 }
 
@@ -1108,7 +1135,24 @@ h1, h2 {
         width: 100%;
         text-align: center;
         font-size: 1.1rem;
-        padding: 1rem 0;
+        padding: 1rem 18px;
+        box-sizing: border-box;
+    }
+    .info-section {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .accordion {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+    .accordion-item {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        box-sizing: border-box;
+        padding-left: 18px;
+        padding-right: 18px;
     }
 }
 
@@ -1132,6 +1176,7 @@ h1, h2 {
 
 .hero-actions {
     display: flex;
+    width: 100%;
     flex-direction: column;
     align-items: flex-start;
     margin-top: 2.2rem;

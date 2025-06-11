@@ -109,7 +109,7 @@ h1, h2 {
     align-items: center;
     justify-content: space-between;
     padding: 0 3vw;
-    height: 70px;
+    height: 92px;
     box-sizing: border-box;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     animation: navbarFadeIn 1s cubic-bezier(0.4,0,0.2,1);
@@ -439,8 +439,8 @@ h1, h2 {
         padding-right: 18px;
     }
     .accordion {
-        padding-left: 0;
-        padding-right: 0;
+        padding-left: 24px;
+        padding-right: 24px;
     }
     .accordion-item {
         margin-left: 0;
@@ -495,6 +495,8 @@ h1, h2 {
 .accordion-item .accordion-content {
     max-height: 400px;
     opacity: 1;
+    padding-left: 18px;
+    padding-right: 18px;   
     padding-bottom: 1.2rem;
     transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
 }
@@ -1150,9 +1152,9 @@ h1, h2 {
         margin-left: 0;
         margin-right: 0;
         width: 100%;
-        box-sizing: border-box;
-        padding-left: 18px;
-        padding-right: 18px;
+        box-sizing: border-box; 
+        padding-left: 24px;
+        padding-right: 24px;       
     }
 }
 

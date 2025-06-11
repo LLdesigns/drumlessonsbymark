@@ -1,3 +1,6 @@
+// Version: 2024-06-10-1 - Always-open accordion, scroll highlight, grow effect, logo animation, index.html for GitHub Pages
+//
+
 // Initialize EmailJS
 (function() {
     emailjs.init({

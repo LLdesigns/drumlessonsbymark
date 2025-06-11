@@ -1007,6 +1007,7 @@ h1, h2 {
     }
     .contact-form {
         min-width: 0;
+        width: 100%;
     }
     .contact-submit {
         margin-left: 0;

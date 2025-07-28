@@ -1,7 +1,10 @@
+// Version: 2024-06-10-1 - Always-open accordion, scroll highlight, grow effect, logo animation, index.html for GitHub Pages
+//
+
 // Initialize EmailJS
 (function() {
     emailjs.init({
-        publicKey: '2UvAwCmMWDLGgRaBn',
+        publicKey: 'SvPmSEaLN8Fld9m9e',
         limitRate: true
     });
 })();
@@ -215,8 +218,8 @@ if (contactForm) {
         };
 
         emailjs.send(
-            'service_j600nr7', // Service ID
-            'template_yrtg9ch', // Template ID
+            'service_hahzv2f', // Service ID
+            'template_4gfaeqj', // Template ID
             templateParams // Template parameters
         ).then(
             function(response) {

@@ -109,7 +109,7 @@ h1, h2 {
     align-items: center;
     justify-content: space-between;
     padding: 0 3vw;
-    height: 70px;
+    height: 92px;
     box-sizing: border-box;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     animation: navbarFadeIn 1s cubic-bezier(0.4,0,0.2,1);
@@ -124,6 +124,7 @@ h1, h2 {
     display: flex;
     align-items: center;
     gap: 0.7rem;
+    min-width: 0;
 }
 .logo-img {
     display: inline-block;
@@ -137,6 +138,10 @@ h1, h2 {
     font-family: inherit;
 }
 .navbar-title {
+    flex-shrink: 1;
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: 'Jost', Arial, sans-serif;
     font-size: 2rem;
     font-weight: 700;
@@ -187,13 +192,33 @@ h1, h2 {
     transform: scaleX(1);
 }
 
+.navbar-menu-btn {
+    margin-right: 24px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+.navbar-menu-btn:focus, .navbar-menu-btn:active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
 @media (max-width: 900px) {
     .navbar-demo {
         padding: 0 1rem;
         height: 60px;
     }
     .navbar-title {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
+        white-space: nowrap;
+        letter-spacing: 0.01em;
+        max-width: 48vw;
+    }
+    .navbar-logo {
+        gap: 0.3rem;
     }
     .navbar-links {
         gap: 1.2rem;
@@ -205,14 +230,7 @@ h1, h2 {
         font-size: 1.5rem;
     }
     .navbar-menu-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: none;
-        border: none;
-        cursor: pointer;
-        margin-left: 1rem;
-        z-index: 102;
+        margin-right: 24px;
     }
     .navbar-sidepanel {
         position: fixed;
@@ -272,12 +290,13 @@ h1, h2 {
     .sidepanel-links a:hover {
         color: var(--primary);
     }
-    .hero-content {
+    .hero-content {        
         text-align: center;
         align-items: center;
     }
     .hero-title {
-        font-size: 2.2rem;
+        width: 100%;
+        font-size: 64px;
     }
     .hero-buttons {
         flex-direction: column;
@@ -287,6 +306,16 @@ h1, h2 {
     .btn {
         width: 100%;
         text-align: center;
+    }
+    .info-section {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+}
+@media (max-width: 600px) {
+    .navbar-title {
+        font-size: 0.85rem;
+        max-width: 38vw;
     }
 }
 
@@ -310,14 +339,6 @@ h1, h2 {
     margin-right: 0.7rem;
     display: inline-block;
     vertical-align: middle;
-}
-
-.navbar-title {
-    font-family: 'Unbounded', Arial, sans-serif;
-    font-weight: 300;
-    font-size: 2rem;
-    color: var(--primary);
-    letter-spacing: 0.04em;
 }
 
 .hero-demo-section {
@@ -403,23 +424,49 @@ h1, h2 {
         padding: 2.5rem 0 1.5rem 0;
     }
     .hero-content {
-        padding: 2rem 1rem 2rem 1.2rem;
-        max-width: 100%;
+        padding-left: 18px;
+        padding-right: 18px;
+        text-align: left;
+        align-items: flex-start;
     }
     .hero-title {
-        font-size: 2.2rem;
+        font-size: 2.4rem;
+        text-align: left;
+        margin-left: 0;
     }
-    .hero-subtitle {
-        font-size: 1.1rem;
+    .hero-subtitle, .hero-desc {
+        text-align: left;
+        margin-left: 0;
     }
     .hero-buttons {
         flex-direction: column;
         gap: 0.7rem;
         width: 100%;
+        align-items: flex-start;
+        margin-left: 0;
     }
-    .btn {
+    .hero-btn {
+        width: auto;
+        min-width: 180px;
+        text-align: left;
+        font-size: 1.1rem;
+        padding: 1rem 18px;
+        box-sizing: border-box;
+        margin-left: 0;
+    }
+    .info-section {        
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+    .accordion {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .accordion-item {
+        margin-left: 0;
+        margin-right: 0;
         width: 100%;
-        text-align: center;
+        box-sizing: border-box;
     }
 }
 
@@ -445,12 +492,15 @@ h1, h2 {
     padding: 2rem 0;
     margin-bottom: 0;
     padding-bottom: 120px;
+    padding-left: 24px;
+    padding-right: 24px;
 }
 
 .accordion {
     max-width: 1400px;
     margin: 0 auto;
     padding-left: 0;
+    padding-right: 0;
 }
 
 .accordion-item {
@@ -468,6 +518,8 @@ h1, h2 {
 .accordion-item .accordion-content {
     max-height: 400px;
     opacity: 1;
+    padding-left: 18px;
+    padding-right: 18px;   
     padding-bottom: 1.2rem;
     transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
 }
@@ -978,6 +1030,7 @@ h1, h2 {
     }
     .contact-form {
         min-width: 0;
+        width: 100%;
     }
     .contact-submit {
         margin-left: 0;
@@ -987,7 +1040,7 @@ h1, h2 {
 
 /* Footer/Quick Links Section Styles */
 .footer-section {
-    background: linear-gradient(180deg, #2a174d 0%, #3a23a5 100%);
+    background: linear-gradient(180deg, #2a174d 30%, #310D80 100%);
     padding: 80px 0 60px 0;
     margin: 0;
     color: #fff;
@@ -1002,7 +1055,7 @@ h1, h2 {
     gap: 2rem;
 }
 .footer-links {
-    display: flex;
+    display: none; /* Hide social media links */
     gap: 2.5rem;
     justify-content: center;
     margin-bottom: 1.2rem;
@@ -1108,7 +1161,24 @@ h1, h2 {
         width: 100%;
         text-align: center;
         font-size: 1.1rem;
-        padding: 1rem 0;
+        padding: 1rem 18px;
+        box-sizing: border-box;
+    }
+    .info-section {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .accordion {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+    .accordion-item {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        box-sizing: border-box; 
+        padding-left: 24px;
+        padding-right: 24px;       
     }
 }
 
@@ -1132,6 +1202,7 @@ h1, h2 {
 
 .hero-actions {
     display: flex;
+    width: 100%;
     flex-direction: column;
     align-items: flex-start;
     margin-top: 2.2rem;

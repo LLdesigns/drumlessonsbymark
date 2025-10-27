@@ -6,7 +6,19 @@ const ContactSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [isRecaptchaVerified, setIsRecaptchaVerified] = useState(false)
   const recaptchaRef = useRef<ReCAPTCHA>(null)
+
+  const handleRecaptchaChange = (value: string | null) => {
+    setIsRecaptchaVerified(!!value)
+    if (value) {
+      setError('') // Clear any previous errors when reCAPTCHA is completed
+    }
+  }
+
+  const handleRecaptchaExpired = () => {
+    setIsRecaptchaVerified(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -48,6 +60,7 @@ const ContactSection = () => {
       setIsSubmitted(true)
       form.reset()
       recaptchaRef.current?.reset()
+      setIsRecaptchaVerified(false)
     } catch (error) {
       console.error('Error submitting message:', error)
       setError('Failed to send message. Please try again later.')
@@ -81,6 +94,8 @@ const ContactSection = () => {
                 sitekey="6LfpRfgrAAAAADKnlAAQ696lz8DB93jBEsx_FHXD"
                 theme="dark"
                 size="normal"
+                onChange={handleRecaptchaChange}
+                onExpired={handleRecaptchaExpired}
               />
             </div>
             {error && (
@@ -88,8 +103,12 @@ const ContactSection = () => {
                 {error}
               </div>
             )}
-            <button type="submit" className="contact-submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : 'Submit'}
+            <button 
+              type="submit" 
+              className="contact-submit" 
+              disabled={isSubmitting || !isRecaptchaVerified}
+            >
+              {isSubmitting ? 'Sending...' : isRecaptchaVerified ? 'Submit' : 'Complete reCAPTCHA to submit'}
             </button>
           </form>
         ) : (

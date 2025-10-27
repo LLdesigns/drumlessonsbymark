@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -64,7 +65,7 @@ const Navbar = () => {
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('pricing-section') }}>Prices</a></li>
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('about-section') }}>About Me</a></li>
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('contact-section') }}>Contact</a></li>
-          <li><a href="/login">Login</a></li>
+        <li><Link to="/login" onClick={closeMenu}>Login</Link></li>
       </ul>
       <button className="navbar-menu-btn" aria-label="Open menu" onClick={toggleMenu}>
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -81,7 +82,7 @@ const Navbar = () => {
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('pricing-section') }}>Prices</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('about-section') }}>About Me</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('contact-section') }}>Contact</a></li>
-          <li><a href="/login">Login</a></li>
+          <li><Link to="/login" onClick={closeMenu}>Login</Link></li>
         </ul>
       </div>
     </nav>

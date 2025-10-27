@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design System - Drum Lessons by Mark</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700;900&family=Unbounded:wght@300&display=swap" rel="stylesheet">
+</head>
+<body>
+    <main>
+        <section id="theme-demo" class="container">
+            <h1>Theme & Buttons Demo</h1>
+            <div class="theme-swatches">
+                <div class="swatch primary">primary</div>
+                <div class="swatch secondary">secondary</div>
+                <div class="swatch tertiary">tertiary</div>
+                <div class="swatch primary-bg">primary-background</div>
+                <div class="swatch secondary-bg">secondary-background</div>
+                <div class="swatch primary-text">primary-text</div>
+            </div>
+            <div class="button-demo">
+                <button class="btn btn-primary">Contact Me</button>
+                <button class="btn btn-secondary">View Lessons</button>
+                <button class="btn btn-tertiary">Get In Touch</button>
+            </div>
+        </section>
+        <!-- Navbar Demo in Placeholder -->
+        <section id="navbar-placeholder" class="container">
+            <nav class="navbar-demo transparent">
+                <div class="navbar-logo">
+                    <img src="assets/logoMP.svg" alt="Mark Proctor Logo" class="logo-img-svg" />
+                    <span class="navbar-title">Mark Proctor</span>
+                </div>
+                <ul class="navbar-links">
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">What You Learn</a></li>
+                    <li><a href="#">Prices</a></li>
+                    <li><a href="#">About Me</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+                <button class="navbar-menu-btn" aria-label="Open menu">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect y="7" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
+                        <rect y="14" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
+                        <rect y="21" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
+                    </svg>
+                </button>
+                <div class="navbar-sidepanel" tabindex="-1">
+                    <button class="sidepanel-close" aria-label="Close menu">&times;</button>
+                    <ul class="sidepanel-links">
+                        <li><a href="#">Home</a></li>
+                        <li><a href="#">What You Learn</a></li>
+                        <li><a href="#">Prices</a></li>
+                        <li><a href="#">About Me</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </section>
+        <!-- Hero Section Demo -->
+        <section id="hero-demo" class="hero-demo-section">
+            <div class="hero-content">
+                <h1 class="hero-title">FIND YOUR RHYTHM</h1>
+                <h2 class="hero-subtitle">Private drum lessons in <b>Claremore & Tulsa, Oklahoma.</b></h2>
+                <p class="hero-desc">Personalized for all ages and skill levels.</p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary">Contact Me</button>
+                    <button class="btn btn-secondary">View Lessons</button>
+                </div>
+            </div>
+            <div class="hero-bg"></div>
+        </section>
+        <section id="info-placeholder" class="container"><h2>Info Section Placeholder</h2></section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html> 

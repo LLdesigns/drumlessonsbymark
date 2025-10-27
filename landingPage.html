@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drum Lessons by Mark</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700;900&family=Unbounded:wght@300&display=swap" rel="stylesheet">
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+    <nav class="navbar-demo transparent">
+        <div class="navbar-logo">
+            <img src="assets/logoMP.svg" alt="Mark Proctor Logo" class="logo-img-svg" />
+            <span class="navbar-title">Mark Proctor</span>
+        </div>
+        <ul class="navbar-links">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">What You Learn</a></li>
+            <li><a href="#">Prices</a></li>
+            <li><a href="#">About Me</a></li>
+            <li><a href="#">Contact</a></li>
+        </ul>
+        <button class="navbar-menu-btn" aria-label="Open menu">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect y="7" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
+                <rect y="14" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
+                <rect y="21" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
+            </svg>
+        </button>
+        <div class="navbar-sidepanel" tabindex="-1">
+            <button class="sidepanel-close" aria-label="Close menu">&times;</button>
+            <ul class="sidepanel-links">
+                <li><a href="#">Home</a></li>
+                <li><a href="#">What You Learn</a></li>
+                <li><a href="#">Prices</a></li>
+                <li><a href="#">About Me</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+    <main>
+        <section id="hero" class="hero-demo-section">
+            <div class="hero-content">
+                <h1 class="hero-title">FIND YOUR RHYTHM</h1>
+                <div style="display: flex; flex-direction: column; gap: 0px;">
+                    <h2 class="hero-subtitle">Private drum lessons in <b>Claremore & Tulsa, Oklahoma.</b></h2>
+                    <p class="hero-desc">Personalized for all ages and skill levels.</p>
+                    <p class="hero-desc">918-779-9878.</p>
+                </div>
+                <div class="hero-actions">
+                    <div class="hero-buttons">
+                        <button class="hero-btn hero-btn-yellow" id="contactBtn">Contact Me</button>
+                        <button class="hero-btn hero-btn-dark" id="viewLessonsBtn">View Lessons</button>
+                    </div>
+                    <div class="sabian-education-logo-wrapper fadeInUpLogo">
+                        <img src="assets/sabianEducationNetwork.png" alt="Sabian Education Network" class="sabian-education-logo" />
+                    </div>
+                </div>
+            </div>
+            <div class="hero-bg"></div>
+        </section>
+        <section id="info-section" class="info-section">
+            <div class="accordion">
+                <div class="accordion-item" tabindex="0">
+                    <div class="accordion-title">
+                        <span>Getting Started with Drums</span>
+                        <!-- <span class="arrow">&#9660;</span> -->
+                    </div>
+                    <div class="accordion-content">
+                        <b>Master the basics with confidence</b><br>
+                        Learn how to hold sticks properly, sit with good posture, and play your first grooves on the snare and hi-hat. Perfect for total beginners, younger students, or anyone returning to drums after a break.
+                        <ul>
+                            <li>Play along to 2–3 basic songs</li>
+                            <li>Understand your gear and setup</li>
+                            <li>Keep a steady beat using both hands</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="accordion-item" tabindex="0">
+                    <div class="accordion-title">
+                        <span>Rock, Country & Worship Styles (and more!)</span>
+                        <!-- <span class="arrow">&#9654;</span> -->
+                    </div>
+                    <div class="accordion-content">
+                        <b>Play the music you love</b><br>
+                        From classic rock and country to worship grooves and beyond, you'll learn patterns that translate to real songs and real stages.
+                        <ul>
+                            <li>Students who already know the basics</li>
+                            <li>Players wanting to join a band or worship team</li>
+                            <li>Anyone looking to jam with confidence</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="accordion-item" tabindex="0">
+                    <div class="accordion-title">
+                        <span>Timing, Tempo & Rudiments</span>
+                        <!-- <span class="arrow">&#9654;</span> -->
+                    </div>
+                    <div class="accordion-content">
+                        <b>Sharpen your skills and sound tighter</b><br>
+                        Drummers are timekeepers — and this section trains your ear, hands, and coordination with essential rudiments and tempo drills.
+                        <ul>
+                            <li>Learn the 5 most-used rudiments</li>
+                            <li>Improve timing with a metronome</li>
+                            <li>Feel more in control of fills and grooves</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="accordion-item" tabindex="0">
+                    <div class="accordion-title">
+                        <span>Custom Lessons for Your Goals</span>
+                        <!-- <span class="arrow">&#9654;</span> -->
+                    </div>
+                    <div class="accordion-content">
+                        <b>Personalized coaching, your way</b><br>
+                        Have something specific in mind? Whether it's speed, technique, learning a song, or preparing for an audition — we'll build a custom plan just for you.
+                        <ul>
+                            <li>Students with specific goals</li>
+                            <li>Intermediate players stuck in a rut</li>
+                            <li>Anyone who wants to level up with intent</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section id="pricing-section" class="pricing-section">
+            <div class="pricing-content">
+                <h2 class="pricing-title">Monthly Drum Lesson Pricing</h2>
+                <div class="pricing-amount-row">
+                    <span class="pricing-amount">$100</span>
+                    <span class="pricing-per">per month</span>
+                </div>
+                <div class="pricing-note">Four 30 minute lessons, or five depending on the month</div>
+            </div>
+        </section>
+        <section id="testimonials-section" class="testimonials-section">
+            <div class="testimonials-container">
+                <div class="testimonial-card">
+                    <div class="testimonial-text">“Mark helped my son find confidence through music. He truly cares.”<br><span class="testimonial-author">— Rachel, beginner drummer</span></div>
+                    <div class="testimonial-stars">
+                        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-text">Before I started lessons with Mark, I'd never even touched a drum kit. Now I look forward to every session — he's patient, encouraging, and makes learning feel easy.”<br><span class="testimonial-author">— Jordan, beginner drummer</span></div>
+                    <div class="testimonial-stars">
+                        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-text">“Mark's lessons never feel boring or rushed. He actually breaks stuff down in a way that makes sense, and I'm finally playing stuff I used to mess up every time.”<br><span class="testimonial-author">— Samantha, student</span></div>
+                    <div class="testimonial-stars">
+                        <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section id="results-section" class="results-section">
+            <div class="results-headline">From First Lesson to Confident Performer</div>
+            <div class="results-vertical">
+                <div class="results-image results-image-one">
+                    <img src="assets/imageOne.png" alt="Student at first lesson" />
+                </div>
+                <div class="results-transformation">Beginner <span class="arrow-transform">→</span> Confident Performer</div>
+                <div class="results-image results-image-two">
+                    <img src="assets/imageTwo.png" alt="Student performing confidently" />
+                </div>
+            </div>
+            <div class="results-quote">“Mark's lessons are hands-on, personal, and honestly a lot of fun. I made more progress in a few months than I ever expected.”</div>
+        </section>
+        <section id="cta-section" class="cta-section">
+            <div class="cta-container">
+                <div class="cta-headline">Ready to Start<br>Drumming?</div>
+                <a href="#" class="btn btn-tertiary cta-btn">Get In Touch</a>
+            </div>
+        </section>
+        <section id="about-section" class="about-section">
+            <div class="about-container">
+                <div class="about-image">
+                    <img src="assets/markDrumming.png" alt="Mark Proctor drumming" />
+                </div>
+                <div class="about-content">
+                    <div class="about-title">More About Mark</div>
+                    <p>Hi, I'm Mark Proctor — a lifelong drummer and passionate teacher based in Claremore, Oklahoma. I picked up my first pair of sticks at age 9 and haven't stopped since.</p>
+                    <p>For over a decade, I've been helping students of all ages build skill, confidence, and a love for music. Whether you're a complete beginner or looking to refine your technique, my lessons are personalized to your goals — and always rooted in patience, encouragement, and rhythm.</p>
+                    <p>I've played everything from rock and country to jazz, worship, and marching band. Over the years, I've had the privilege of performing with local groups, teaching in schools, and watching students grow into confident players both on and off the stage.</p>
+                    <p>My mission is simple: make learning drums fun, approachable, and rewarding — no matter your age or experience level.</p>
+                    <p><b>Let's find your groove together.</b></p>
+                </div>
+            </div>
+        </section>
+        <section id="contact-section" class="contact-section">
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h2 class="contact-title">Get in Touch</h2>
+                    <p class="contact-desc">Contact me for more information and to schedule your first lesson.</p>
+                </div>
+                <form class="contact-form">
+                    <div class="contact-row">
+                        <input type="text" class="contact-input" name="firstName" placeholder="First name" required />
+                        <input type="text" class="contact-input" name="lastName" placeholder="Last name" required />
+                    </div>
+                    <div class="contact-row">
+                        <input type="email" class="contact-input" name="email" placeholder="Email" required />
+                    </div>
+                    <div class="contact-row">
+                        <textarea class="contact-input contact-message" name="message" placeholder="Your message" required></textarea>
+                    </div>
+                    <button type="submit" class="contact-submit">Submit</button>
+                </form>
+                <div class="contact-success" style="display:none">Request sent! Thank you for reaching out. I'll be in touch soon.</div>
+            </div>
+        </section>
+        <footer class="footer-section">
+            <div class="footer-container">
+                <div class="footer-links">
+                    <a href="https://www.facebook.com" target="_blank" class="footer-link" aria-label="Facebook">
+                        <img src="assets/facebook.png" alt="Facebook" class="social-icon" />
+                    </a>
+                    <a href="https://www.instagram.com" target="_blank" class="footer-link" aria-label="Instagram">
+                        <img src="assets/instagram.png" alt="Instagram" class="social-icon" />
+                    </a>
+                </div>
+                <div class="footer-contact-container">
+                    <div class="footer-location">Claremore, OK &nbsp; | &nbsp; Tulsa, Ok</div>
+                    <div class="footer-number" style="margin-top: 12px;">918-779-9879</div>
+                    <div class="footer-email" style="margin-top: 12px;">mrkprctr@yahoo.com</div>
+                </div>
+            </div>
+        </footer>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html> 

@@ -1,0 +1,14 @@
+# Set MIME types for JavaScript modules
+<Files "*.js">
+    Header set Content-Type "text/javascript"
+</Files>
+
+# Set MIME types for CSS
+<Files "*.css">
+    Header set Content-Type "text/css"
+</Files>
+
+# Enable CORS for assets
+<FilesMatch "\.(js|css)$">
+    Header set Access-Control-Allow-Origin "*"
+</FilesMatch>

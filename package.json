@@ -9,11 +9,12 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/fix-mime-types.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "ensure-nojekyll": "node -e \"require('fs').writeFileSync('dist/.nojekyll', '')\""
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",

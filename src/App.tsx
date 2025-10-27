@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useAuthStore } from './store/auth'
@@ -8,21 +8,35 @@ import Admin from './pages/Admin'
 
 const queryClient = new QueryClient()
 
-function App() {
+function AppContent() {
   const { checkAuth } = useAuthStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     checkAuth()
-  }, [checkAuth])
+    
+    // Check for stored redirect path from 404.html
+    const redirectPath = sessionStorage.getItem('redirectPath')
+    if (redirectPath) {
+      sessionStorage.removeItem('redirectPath')
+      navigate(redirectPath)
+    }
+  }, [checkAuth, navigate])
 
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/admin" element={<Admin />} />
+    </Routes>
+  )
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
+        <AppContent />
       </Router>
     </QueryClientProvider>
   )

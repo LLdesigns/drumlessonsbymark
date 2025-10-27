@@ -5,18 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drum Lessons by Mark</title>
     <script>
-        // Simple redirect to main app for GitHub Pages SPA support
-        // This will redirect any 404 to the main app and let React Router handle it
+        // GitHub Pages SPA redirect
+        // Store the original path and redirect to main app
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        
+        // Store the original path in sessionStorage for the main app to use
+        sessionStorage.setItem('redirectPath', path + search + hash);
+        
+        // Redirect to main app
         window.location.replace('/');
     </script>
 </head>
 <body>
-    <p>Redirecting to main app...</p>
+    <p>Redirecting...</p>
     <script>
         // Fallback redirect
         setTimeout(function() {
             window.location.replace('/');
-        }, 500);
+        }, 1000);
     </script>
 </body>
 </html>

@@ -30,7 +30,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      # Vite inlines VITE_* at build time — set repo secrets: Settings → Secrets and variables → Actions
+      # Vite inlines VITE_* at build time — Repository secrets: Settings → Secrets → Actions
+      # If the live site still shows "Missing Supabase configuration", check Settings → Pages:
+      # Source must be "GitHub Actions", NOT the gh-pages branch (local npm run deploy has no secrets).
+      - name: Verify Supabase secrets are non-empty
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is empty. Add both under Repository secrets (Actions)."
+            exit 1
+          fi
+          echo "Supabase env vars are set for this build."
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}

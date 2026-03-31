@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { supabase } from '../lib/supabase'
+import { TextField, Textarea, Button } from './ui'
 
 const ContactSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -79,14 +80,33 @@ const ContactSection = () => {
         {!isSubmitted ? (
           <form className="contact-form" onSubmit={handleSubmit}>
             <div className="contact-row">
-              <input type="text" className="contact-input" name="firstName" placeholder="First name" required />
-              <input type="text" className="contact-input" name="lastName" placeholder="Last name" required />
+              <TextField 
+                name="firstName" 
+                placeholder="First name" 
+                required 
+              />
+              <TextField 
+                name="lastName" 
+                placeholder="Last name" 
+                required 
+              />
             </div>
             <div className="contact-row">
-              <input type="email" className="contact-input" name="email" placeholder="Email" required />
+              <TextField 
+                name="email" 
+                type="email"
+                placeholder="Email" 
+                fullWidth
+                required 
+              />
             </div>
             <div className="contact-row">
-              <textarea className="contact-input contact-message" name="message" placeholder="Your message" required></textarea>
+              <Textarea 
+                name="message" 
+                placeholder="Your message" 
+                fullWidth
+                required 
+              />
             </div>
             <div className="contact-row">
               <ReCAPTCHA
@@ -103,13 +123,15 @@ const ContactSection = () => {
                 {error}
               </div>
             )}
-            <button 
+            <Button 
               type="submit" 
-              className="contact-submit" 
+              variant="primary"
+              fullWidth
+              loading={isSubmitting}
               disabled={isSubmitting || !isRecaptchaVerified}
             >
               {isSubmitting ? 'Sending...' : isRecaptchaVerified ? 'Submit' : 'Complete reCAPTCHA to submit'}
-            </button>
+            </Button>
           </form>
         ) : (
           <div className="contact-success" style={{ display: 'block' }}>

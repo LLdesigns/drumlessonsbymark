@@ -1,0 +1,367 @@
+/**
+ * Design Tokens - Drum Lessons by Mark
+ * 
+ * Comprehensive design system tokens similar to Pando v1
+ * All design values should reference these tokens for consistency
+ * 
+ * Reference: https://pando-storybook.pluralsight.com/tutorials/add-pando-to-a-web-app/v1/pando-v1/
+ */
+
+:root {
+  /* ============================================
+     COLOR TOKENS - Semantic Color System
+     ============================================ */
+  
+  /* Brand Colors */
+  --color-brand-primary: #ffb800;        /* Yellow/gold - primary brand color */
+  --color-brand-primary-hover: #e6a700;  /* Darker yellow for hover states */
+  --color-brand-primary-active: #cc9600; /* Active state */
+  --color-brand-secondary: #1a0a3c;     /* Dark purple - secondary brand */
+  --color-brand-tertiary: #2a174d;      /* Lighter purple - tertiary brand */
+  
+  /* Background Colors */
+  --color-bg-primary: #0a071a;          /* Main background - very dark */
+  --color-bg-secondary: #1a0a3c;        /* Secondary background - dark purple */
+  --color-bg-tertiary: #2a174d;         /* Tertiary background */
+  --color-bg-overlay: rgba(255, 255, 255, 0.01); /* Subtle overlay */
+  --color-bg-input: #060111;            /* Input background */
+  --color-bg-input-error: rgba(255, 107, 107, 0.1); /* Error state background */
+  
+  /* Text Colors */
+  --color-text-primary: #f7f7fa;        /* Primary text - light */
+  --color-text-secondary: rgba(247, 247, 250, 0.7); /* Secondary text - muted */
+  --color-text-tertiary: rgba(247, 247, 250, 0.5);  /* Tertiary text - very muted */
+  --color-text-on-primary: #181818;     /* Text on primary color background */
+  --color-text-on-dark: #fff;            /* Text on dark backgrounds */
+  
+  /* Border Colors */
+  --color-border-default: #2a174d;      /* Default border */
+  --color-border-focus: #EFCC18;        /* Focus state border - yellow */
+  --color-border-error: #ff6b6b;        /* Error state border */
+  --color-border-primary: var(--color-brand-primary); /* Primary border */
+  
+  /* Semantic Colors */
+  --color-success: #22c55e;
+  --color-success-light: rgba(34, 197, 94, 0.1);
+  --color-warning: #f59e0b;
+  --color-warning-light: rgba(245, 158, 11, 0.1);
+  --color-error: #ff6b6b;
+  --color-error-light: rgba(255, 107, 107, 0.1);
+  --color-info: #3b82f6;
+  --color-info-light: rgba(59, 130, 246, 0.1);
+  
+  /* Gradient Colors */
+  --gradient-primary: linear-gradient(90deg, rgba(10,7,26,0.92) 0%, rgba(10,7,26,0.7) 60%, rgba(10,7,26,0.2) 100%);
+  --gradient-bg-hero: linear-gradient(180deg, #070111 0%, #0A071A 61%);
+  --gradient-bg-pricing: linear-gradient(180deg, #0A071A 30%, #0a071ab3 60%, #0a071a33 100%);
+  
+  /* ============================================
+     TYPOGRAPHY TOKENS
+     ============================================ */
+  
+  /* Font Families */
+  --font-family-display: 'Jost', Arial, sans-serif;        /* Headings and display text */
+  --font-family-body: 'Jost', Arial, sans-serif;            /* Body text */
+  --font-family-button: 'Montserrat', Arial, sans-serif;    /* Buttons */
+  --font-family-accent: 'Unbounded', Arial, sans-serif;     /* Accent text (weight 300) */
+  
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+  
+  /* Font Sizes - Scale (Base: 16px) */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-md: 1.05rem;      /* 16.8px */
+  --font-size-lg: 1.1rem;       /* 17.6px - buttons */
+  --font-size-xl: 1.15rem;      /* 18.4px */
+  --font-size-2xl: 1.2rem;      /* 19.2px */
+  --font-size-3xl: 1.5rem;      /* 24px */
+  --font-size-4xl: 1.6rem;      /* 25.6px - hero subtitle */
+  --font-size-5xl: 2rem;        /* 32px */
+  --font-size-6xl: 2.2rem;      /* 35.2px - section titles */
+  --font-size-7xl: 2.4rem;      /* 38.4px */
+  --font-size-8xl: 4rem;        /* 64px - hero title */
+  
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+  
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  
+  /* ============================================
+     SPACING TOKENS - Consistent spacing scale
+     ============================================ */
+  
+  --space-0: 0;
+  --space-1: 0.25rem;    /* 4px - Minimal spacing */
+  --space-2: 0.5rem;     /* 8px - Tight spacing */
+  --space-3: 0.75rem;    /* 12px - Compact spacing */
+  --space-4: 1rem;       /* 16px - Base spacing */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px - Comfortable spacing */
+  --space-8: 2rem;       /* 32px - Section spacing */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px - Large spacing */
+  --space-16: 4rem;      /* 64px - XL spacing */
+  --space-20: 5rem;      /* 80px - XXL spacing */
+  --space-24: 6rem;      /* 96px - Maximum spacing */
+  
+  /* Component-specific spacing */
+  --space-component-xs: var(--space-1);
+  --space-component-sm: var(--space-2);
+  --space-component-md: var(--space-4);
+  --space-component-lg: var(--space-6);
+  --space-component-xl: var(--space-8);
+  
+  /* ============================================
+     BORDER TOKENS
+     ============================================ */
+  
+  /* Border Width */
+  --border-width-none: 0;
+  --border-width-thin: 1px;
+  --border-width-base: 2px;
+  --border-width-thick: 3px;
+  --border-width-thicker: 4px;
+  
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;   /* 2px */
+  --radius-md: 0.375rem;    /* 6px */
+  --radius-base: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;    /* 12px */
+  --radius-xl: 1rem;       /* 16px */
+  --radius-2xl: 1.5rem;     /* 24px */
+  --radius-3xl: 2rem;       /* 32px */
+  --radius-full: 9999px;
+  
+  /* ============================================
+     SHADOW TOKENS
+     ============================================ */
+  
+  --shadow-none: none;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.15);
+  --shadow-primary: 0 2px 8px rgba(255, 184, 0, 0.08); /* Primary color shadow */
+  
+  /* ============================================
+     SIZING TOKENS
+     ============================================ */
+  
+  /* Container Widths */
+  --width-container-sm: 640px;
+  --width-container-md: 768px;
+  --width-container-lg: 1024px;
+  --width-container-xl: 1280px;
+  --width-container-2xl: 1440px;
+  --width-container-max: 900px; /* Current max width */
+  
+  /* Input Sizes */
+  --height-input-sm: 2.5rem;     /* 40px */
+  --height-input-md: 3rem;       /* 48px - default */
+  --height-input-lg: 3.75rem;     /* 60px */
+  
+  --padding-input-sm-x: 0.75rem;  /* 12px horizontal */
+  --padding-input-sm-y: 0.5rem;   /* 8px vertical */
+  --padding-input-md-x: 1.2rem;   /* 19.2px horizontal - default */
+  --padding-input-md-y: 1rem;    /* 16px vertical - default */
+  --padding-input-lg-x: 1.5rem;   /* 24px horizontal */
+  --padding-input-lg-y: 1.25rem;  /* 20px vertical */
+  
+  --font-size-input-sm: var(--font-size-sm);   /* 14px */
+  --font-size-input-md: var(--font-size-base); /* 16px - default */
+  --font-size-input-lg: var(--font-size-lg);    /* 17.6px */
+  
+  /* Button Heights */
+  --height-button-sm: 2.5rem;     /* 40px */
+  --height-button-md: 3rem;       /* 48px - default */
+  --height-button-lg: 3.5rem;     /* 56px */
+  
+  --padding-button-sm-x: 1rem;    /* 16px horizontal */
+  --padding-button-sm-y: 0.5rem;  /* 8px vertical */
+  --padding-button-md-x: 2rem;    /* 32px horizontal - default */
+  --padding-button-md-y: 0.75rem; /* 12px vertical - default */
+  --padding-button-lg-x: 2.5rem;  /* 40px horizontal */
+  --padding-button-lg-y: 1rem;   /* 16px vertical */
+  
+  --font-size-button-sm: var(--font-size-sm);   /* 14px */
+  --font-size-button-md: var(--font-size-lg);   /* 17.6px - default */
+  --font-size-button-lg: var(--font-size-xl);   /* 18.4px */
+  
+  /* ============================================
+     TRANSITION TOKENS
+     ============================================ */
+  
+  --transition-fast: 0.15s ease-in-out;
+  --transition-base: 0.2s ease-in-out;
+  --transition-slow: 0.3s ease-in-out;
+  --transition-slower: 0.5s ease-in-out;
+  
+  /* ============================================
+     Z-INDEX TOKENS
+     ============================================ */
+  
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+  --z-max: 9999;
+  
+  /* ============================================
+     OPACITY TOKENS
+     ============================================ */
+  
+  --opacity-0: 0;
+  --opacity-25: 0.25;
+  --opacity-50: 0.5;
+  --opacity-75: 0.75;
+  --opacity-100: 1;
+  
+  /* ============================================
+     RESPONSIVE BREAKPOINT TOKENS
+     ============================================ */
+  
+  --breakpoint-sm: 640px;   /* Small devices (phones) */
+  --breakpoint-md: 768px;   /* Medium devices (tablets) */
+  --breakpoint-lg: 1024px;  /* Large devices (desktops) */
+  --breakpoint-xl: 1280px;  /* Extra large devices */
+  --breakpoint-2xl: 1536px; /* 2X Extra large devices */
+  
+  /* Responsive spacing modifiers */
+  --space-responsive-sm: var(--space-2);
+  --space-responsive-md: var(--space-4);
+  --space-responsive-lg: var(--space-6);
+  
+  /* ============================================
+     LEGACY TOKEN MAPPING (for backward compatibility)
+     ============================================ */
+
+  --primary: var(--color-brand-primary);
+  --secondary: var(--color-brand-secondary);
+  --tertiary: var(--color-brand-tertiary);
+  --primary-bg: var(--color-bg-primary);
+  --secondary-bg: var(--color-bg-secondary);
+  --primary-text: var(--color-text-primary);
+  --button-radius: var(--radius-base);
+  --button-font: var(--font-family-button);
+  --color-border: var(--color-border-default); /* Legacy border token */
+}
+
+/* ============================================
+   THEME VARIATIONS
+   ============================================ */
+
+[data-theme="dark"] {
+  /* Dark theme is default, defined in :root above */
+}
+
+[data-theme="light"] {
+  /* Light mode color overrides */
+  
+  /* Background Colors - Light */
+  --color-bg-primary: #ffffff;          /* Main background - white */
+  --color-bg-secondary: #f8f9fa;        /* Secondary background - light gray */
+  --color-bg-tertiary: #e9ecef;         /* Tertiary background - lighter gray */
+  --color-bg-overlay: rgba(0, 0, 0, 0.03); /* Subtle overlay */
+  --color-bg-input: #ffffff;            /* Input background - white */
+  --color-bg-input-error: rgba(255, 107, 107, 0.15); /* Error state background */
+  
+  /* Text Colors - Light */
+  --color-text-primary: #1a1a1a;        /* Primary text - dark */
+  --color-text-secondary: rgba(26, 26, 26, 0.7); /* Secondary text - muted dark */
+  --color-text-tertiary: rgba(26, 26, 26, 0.5);  /* Tertiary text - very muted dark */
+  --color-text-on-primary: #181818;     /* Text on primary color background */
+  --color-text-on-dark: #fff;            /* Text on dark backgrounds */
+  
+  /* Border Colors - Light */
+  --color-border-default: #dee2e6;      /* Default border - light gray */
+  --color-border-focus: #EFCC18;        /* Focus state border - yellow (same) */
+  --color-border-error: #ff6b6b;        /* Error state border (same) */
+  --color-border-primary: var(--color-brand-primary); /* Primary border */
+  
+  /* Brand colors remain the same in light mode */
+  /* --color-brand-primary: #ffb800; (unchanged) */
+  /* --color-brand-secondary: #1a0a3c; (unchanged) */
+  /* --color-brand-tertiary: #2a174d; (unchanged) */
+  
+  /* Semantic colors remain the same */
+  
+  /* Shadows - Adjusted for light mode */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.12);
+  --shadow-primary: 0 2px 8px rgba(255, 184, 0, 0.15); /* Primary color shadow */
+  
+  /* Gradients - Adjusted for light mode */
+  --gradient-primary: linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 60%, rgba(255, 255, 255, 0.5) 100%);
+  --gradient-bg-hero: linear-gradient(180deg, #f8f9fa 0%, #ffffff 61%);
+  --gradient-bg-pricing: linear-gradient(180deg, #ffffff 30%, rgba(255, 255, 255, 0.9) 60%, rgba(255, 255, 255, 0.7) 100%);
+}
+
+/* ============================================
+   RESPONSIVE RULES
+   ============================================ */
+
+/* Mobile First - Base styles are for mobile */
+/* Small devices (landscape phones, 640px and up) */
+@media (min-width: 640px) {
+  :root {
+    --width-container-max: 90%;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  :root {
+    --width-container-max: 85%;
+    --space-component-md: var(--space-6);
+  }
+}
+
+/* Large devices (desktops, 1024px and up) */
+@media (min-width: 1024px) {
+  :root {
+    --width-container-max: 900px;
+  }
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 767px) {
+  :root {
+    --font-size-8xl: 2.4rem;     /* Smaller on mobile */
+    --font-size-6xl: 1.5rem;
+    --font-size-4xl: 1.3rem;
+    --width-container-max: 100%;
+    --space-component-md: var(--space-4); /* Reduced spacing */
+    
+    /* Smaller input sizes on mobile */
+    --height-input-sm: 2.25rem;  /* 36px */
+    --height-input-md: 2.75rem;  /* 44px */
+    --height-input-lg: 3.25rem;  /* 52px */
+    
+    --padding-input-sm-x: 0.625rem; /* 10px */
+    --padding-input-md-x: 1rem;     /* 16px */
+    --padding-input-lg-x: 1.25rem;  /* 20px */
+  }
+}
+

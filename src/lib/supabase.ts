@@ -1,6 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://ciqxnpgxvuspctsaxszd.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpcXhucGd4dnVzcGN0c2F4c3pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjE0NjksImV4cCI6MjA3MjgzNzQ2OX0.9sv-ou3tILNomPs9i7efqyt0W10DkEb8ZBmz2qLH8rw'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    storageKey: 'sb-session',
+    // 30 days in seconds (30 * 24 * 60 * 60)
+    // Note: This is a client-side setting. Actual expiration is controlled by Supabase Auth settings
+  }
+})

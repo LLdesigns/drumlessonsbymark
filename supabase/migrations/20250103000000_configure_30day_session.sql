@@ -1,0 +1,38 @@
+-- Migration: Configure 30-Day Session Cache
+-- Description: This migration documents and sets up configuration for 30-day session persistence
+-- Note: JWT expiration settings must be configured in Supabase Dashboard (not via SQL)
+-- Date: 2025-01-03
+
+-- ============================================
+-- IMPORTANT: JWT Configuration Instructions
+-- ============================================
+-- 
+-- To enable 30-day sessions, you MUST configure JWT settings in Supabase Dashboard:
+-- 
+-- 1. Go to: https://supabase.com/dashboard/project/cfzvnrlmbgtkltbzovte/auth/settings
+-- 2. Navigate to: Authentication → Settings → JWT expiry
+-- 3. Set the following values:
+--    - Access Token JWT expiry: 2592000 (30 days in seconds)
+--    - Refresh Token expiry: 2592000 (30 days in seconds)
+-- 
+-- Alternative: If you want longer refresh tokens:
+--    - Access Token JWT expiry: 3600 (1 hour - shorter for security)
+--    - Refresh Token expiry: 2592000 (30 days - longer for persistence)
+--
+-- The client-side code will automatically refresh access tokens using the refresh token.
+-- 
+-- ============================================
+-- Note: The following is documentation only
+-- ============================================
+-- 
+-- Supabase stores sessions in the auth.sessions table, but JWT expiration
+-- is controlled by the JWT secret and expiration settings configured in
+-- the dashboard, not by database settings.
+--
+-- Client-side session persistence is already handled by:
+-- 1. localStorage storage (configured in src/lib/supabase.ts)
+-- 2. Auto-refresh token mechanism (configured in src/lib/supabase.ts)
+-- 3. Session expiration tracking (in src/store/auth.ts)
+--
+-- This ensures users remain logged in for 30 days without re-authentication.
+

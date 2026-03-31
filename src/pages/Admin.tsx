@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { useNavigate } from 'react-router-dom'
@@ -100,7 +101,21 @@ const Admin = () => {
         paddingBottom: '1rem',
         borderBottom: '1px solid var(--secondary)'
       }}>
-        <h1 style={{ margin: 0, color: 'var(--primary)' }}>Admin Dashboard</h1>
+        <div>
+          <h1 style={{ margin: 0, color: 'var(--primary)' }}>Admin Dashboard</h1>
+          <div style={{ marginTop: '0.5rem' }}>
+            <Link 
+              to="/admin/design-system"
+              style={{
+                color: 'var(--primary)',
+                textDecoration: 'none',
+                fontSize: '0.9rem'
+              }}
+            >
+              View Design System →
+            </Link>
+          </div>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ position: 'relative' }}>
             <button

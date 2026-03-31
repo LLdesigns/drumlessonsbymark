@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { Button } from './ui'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -64,23 +65,37 @@ const Navbar = () => {
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('info-section') }}>What You Learn</a></li>
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('pricing-section') }}>Prices</a></li>
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('about-section') }}>About Me</a></li>
+        <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('media-section') }}>Media</a></li>
         <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('contact-section') }}>Contact</a></li>
         <li><Link to="/login" onClick={closeMenu}>Login</Link></li>
       </ul>
-      <button className="navbar-menu-btn" aria-label="Open menu" onClick={toggleMenu}>
+      <Button 
+        className="navbar-menu-btn" 
+        aria-label="Open menu" 
+        onClick={toggleMenu}
+        variant="tertiary"
+        style={{ background: 'transparent', border: 'none', padding: 0 }}
+      >
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect y="7" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
           <rect y="14" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
           <rect y="21" width="32" height="3.5" rx="1.75" fill="var(--primary)"/>
         </svg>
-      </button>
+      </Button>
       <div className={`navbar-sidepanel ${isMenuOpen ? 'open' : ''}`} tabIndex={-1}>
-        <button className="sidepanel-close" aria-label="Close menu" onClick={closeMenu}>&times;</button>
+        <Button 
+          className="sidepanel-close" 
+          aria-label="Close menu" 
+          onClick={closeMenu}
+          variant="tertiary"
+          style={{ background: 'transparent', border: 'none', padding: 0, fontSize: 'var(--font-size-2xl)' }}
+        >&times;</Button>
         <ul className="sidepanel-links">
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero') }}>Home</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('info-section') }}>What You Learn</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('pricing-section') }}>Prices</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('about-section') }}>About Me</a></li>
+          <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('media-section') }}>Media</a></li>
           <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('contact-section') }}>Contact</a></li>
           <li><Link to="/login" onClick={closeMenu}>Login</Link></li>
         </ul>

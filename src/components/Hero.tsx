@@ -1,3 +1,5 @@
+import { Button } from './ui'
+
 const Hero = () => {
 
   const scrollToSection = (sectionId: string) => {
@@ -35,20 +37,20 @@ const Hero = () => {
         </div>
         <div className="hero-actions">
           <div className="hero-buttons">
-            <button 
-              className="hero-btn hero-btn-yellow" 
+            <Button 
               id="contactBtn"
               onClick={() => scrollToSection('contact-section')}
+              variant="primary"
             >
               Contact Me
-            </button>
-            <button 
-              className="hero-btn hero-btn-dark" 
+            </Button>
+            <Button 
               id="viewLessonsBtn"
               onClick={handleViewLessonsClick}
+              variant="secondary"
             >
               View Lessons
-            </button>
+            </Button>
           </div>
           <div className="sabian-education-logo-wrapper fadeInUpLogo">
             <img src="/sabianEducationNetwork.png" alt="Sabian Education Network" className="sabian-education-logo" />

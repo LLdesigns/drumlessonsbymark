@@ -11,6 +11,8 @@ import { useTheme } from '../../hooks/useTheme'
 import { useStudioFloatingPanel } from '../../hooks/useStudioFloatingPanel'
 
 import AccountSettingsModal from '../AccountSettingsModal'
+import PwaInstallHelpModal from './PwaInstallHelpModal'
+import { usePwaInstall } from '../../hooks/usePwaInstall'
 import { studioFloatingRootClass } from '../../lib/studio-portal-classes'
 
 interface StudioProfileMenuProps {
@@ -43,6 +45,10 @@ export default function StudioProfileMenu({
 
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  const [pwaHelpOpen, setPwaHelpOpen] = useState(false)
+
+  const { showInstallOption, install } = usePwaInstall()
+
 
 
   const floatingPlacement = placement === 'topbar' ? 'inline' : placement
@@ -57,7 +63,7 @@ export default function StudioProfileMenu({
 
     panelWidth: 220,
 
-    panelMaxHeight: 240,
+    panelMaxHeight: 300,
 
   })
 
@@ -90,6 +96,18 @@ export default function StudioProfileMenu({
     await signOut()
 
     navigate('/', { replace: true })
+
+  }
+
+
+
+  const handleAddToHomeScreen = async () => {
+
+    setIsOpen(false)
+
+    const outcome = await install()
+
+    if (outcome === 'ios') setPwaHelpOpen(true)
 
   }
 
@@ -128,6 +146,16 @@ export default function StudioProfileMenu({
         <i className="bi bi-pencil" /> Edit account
 
       </button>
+
+      {showInstallOption ? (
+
+        <button type="button" role="menuitem" onClick={handleAddToHomeScreen}>
+
+          <i className="bi bi-box-arrow-down" /> Add to home screen
+
+        </button>
+
+      ) : null}
 
       <button type="button" role="menuitem" onClick={() => { toggleTheme(); setIsOpen(false) }}>
 
@@ -214,6 +242,8 @@ export default function StudioProfileMenu({
 
 
       <AccountSettingsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      <PwaInstallHelpModal isOpen={pwaHelpOpen} onClose={() => setPwaHelpOpen(false)} />
 
     </div>
 

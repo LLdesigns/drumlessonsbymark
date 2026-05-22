@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import MarkStudioLayout from '../../../components/layout/MarkStudioLayout'
 import StudioPageHeader from '../../../components/studio/StudioPageHeader'
+import NewChatModal from '../../../components/studio/messages/NewChatModal'
+import StudioChatPane from '../../../components/studio/messages/StudioChatPane'
+import StudioChatThreadList, { type ThreadFilter } from '../../../components/studio/messages/StudioChatThreadList'
 import { useAuthStore } from '../../../store/auth'
 import {
-  displayName,
+  buildStudioChatThreads,
+  draftStudentThread,
+  findThreadById,
+} from '../../../lib/studio-messages'
+import '../../../lib/studio-messages.css'
+import {
   fetchStudioMessages,
   fetchTeacherStudents,
   markMessageRead,
@@ -17,158 +25,141 @@ export default function MarkMessages() {
   const { user, userRole, userProfile } = useAuthStore()
   const [messages, setMessages] = useState<StudioMessage[]>([])
   const [students, setStudents] = useState<StudioStudent[]>([])
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [body, setBody] = useState('')
   const [messageType, setMessageType] = useState<StudioMessage['message_type']>('chat')
+  const [sending, setSending] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<ThreadFilter>('all')
+  const [showNewChat, setShowNewChat] = useState(false)
+  const [mobileShowPane, setMobileShowPane] = useState(false)
+
+  const threads = useMemo(
+    () => (user?.id ? buildStudioChatThreads(user.id, messages, students) : []),
+    [user?.id, messages, students]
+  )
+
+  const existingThreadIds = useMemo(() => new Set(threads.map((t) => t.id)), [threads])
+
+  const selectedThread = useMemo(() => {
+    const existing = findThreadById(threads, selectedThreadId)
+    if (existing) return existing
+    if (!selectedThreadId?.startsWith('user:')) return null
+    const peerId = selectedThreadId.slice('user:'.length)
+    const student = students.find((s) => s.user_id === peerId)
+    return student ? draftStudentThread(student) : null
+  }, [threads, selectedThreadId, students])
 
   useEffect(() => {
     if (!user?.id) return
-    Promise.all([fetchStudioMessages(user.id), fetchTeacherStudents(user.id, userRole)]).then(([m, s]) => {
-      setMessages(m)
-      setStudents(s)
-      if (s.length && !selectedStudentId) setSelectedStudentId(s[0].user_id)
-    })
-  }, [user?.id])
-
-  const thread = useMemo(() => {
-    if (!selectedStudentId || !user?.id) return []
-    return messages.filter(
-      (m) =>
-        (m.sender_id === user.id && m.recipient_id === selectedStudentId) ||
-        (m.sender_id === selectedStudentId && m.recipient_id === user.id)
+    Promise.all([fetchStudioMessages(user.id), fetchTeacherStudents(user.id, userRole)]).then(
+      ([m, s]) => {
+        setMessages(m)
+        setStudents(s)
+        setSelectedThreadId((current) => {
+          if (current && buildStudioChatThreads(user.id, m, s).some((t) => t.id === current)) {
+            return current
+          }
+          const built = buildStudioChatThreads(user.id, m, s)
+          return built[0]?.id ?? null
+        })
+      }
     )
-  }, [messages, selectedStudentId, user?.id])
+  }, [user?.id, userRole])
+
+  useEffect(() => {
+    if (!user?.id || !selectedThread) return
+    selectedThread.messages.forEach((m) => {
+      if (m.recipient_id === user.id && !m.read_at) markMessageRead(m.id)
+    })
+  }, [selectedThread, user?.id])
+
+  const refreshMessages = async () => {
+    if (!user?.id) return
+    const updated = await fetchStudioMessages(user.id)
+    setMessages(updated)
+    return updated
+  }
+
+  const handleSelectThread = (threadId: string) => {
+    setSelectedThreadId(threadId)
+    setMobileShowPane(true)
+  }
+
+  const handleNewChatStart = (threadIds: string[]) => {
+    if (threadIds.length === 0) return
+    setSelectedThreadId(threadIds[0])
+    setMobileShowPane(true)
+    if (threadIds.length > 1) {
+      setFilter('students')
+    }
+  }
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user?.id || !selectedStudentId || !body.trim()) return
+    if (!user?.id || !selectedThread || selectedThread.kind !== 'student' || !selectedThread.peerUserId) {
+      return
+    }
+    if (!body.trim()) return
     const trimmed = body.trim()
-    await sendStudioMessage({
-      sender_id: user.id,
-      recipient_id: selectedStudentId,
-      body: trimmed,
-      message_type: messageType,
-    })
-    markMessagingActivity()
-    await notifyMessageReceived(selectedStudentId, userProfile, trimmed, 'student')
-    setBody('')
-    const updated = await fetchStudioMessages(user.id)
-    setMessages(updated)
+    setSending(true)
+    try {
+      await sendStudioMessage({
+        sender_id: user.id,
+        recipient_id: selectedThread.peerUserId,
+        body: trimmed,
+        message_type: messageType,
+      })
+      markMessagingActivity()
+      await notifyMessageReceived(selectedThread.peerUserId, userProfile, trimmed, 'student')
+      setBody('')
+      await refreshMessages()
+    } finally {
+      setSending(false)
+    }
   }
-
-  useEffect(() => {
-    if (!user?.id) return
-    thread.forEach((m) => {
-      if (m.recipient_id === user.id && !m.read_at) markMessageRead(m.id)
-    })
-  }, [thread, user?.id])
-
-  const selectedStudent = students.find((s) => s.user_id === selectedStudentId)
 
   return (
     <MarkStudioLayout>
       <StudioPageHeader
         title="Messages"
-        subtitle="Stay connected with students and parents — reminders, encouragement, and lesson follow-ups."
+        subtitle="Direct chats with students and inquiries from the website contact form."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '1rem', minHeight: 420 }}>
-        <aside className="studio-card" style={{ padding: '0.5rem' }}>
-          {students.map((s) => (
-            <button
-              key={s.user_id}
-              type="button"
-              onClick={() => setSelectedStudentId(s.user_id)}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '0.65rem 0.75rem',
-                border: 'none',
-                borderRadius: 8,
-                background: selectedStudentId === s.user_id ? 'var(--studio-accent-soft)' : 'transparent',
-                color: 'var(--studio-text)',
-                cursor: 'pointer',
-                fontWeight: selectedStudentId === s.user_id ? 600 : 400,
-              }}
-            >
-              {displayName(s)}
-            </button>
-          ))}
-        </aside>
+      <div className={`studio-chat ${mobileShowPane ? 'studio-chat--show-pane' : ''}`}>
+        <StudioChatThreadList
+          threads={threads}
+          selectedThreadId={selectedThreadId}
+          filter={filter}
+          search={search}
+          onSelect={handleSelectThread}
+          onFilterChange={setFilter}
+          onSearchChange={setSearch}
+          onNewChat={() => setShowNewChat(true)}
+        />
 
-        <div className="studio-card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <p className="studio-label" style={{ marginBottom: '0.75rem' }}>
-            Conversation with {selectedStudent ? displayName(selectedStudent) : '…'}
-          </p>
-
-          <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', maxHeight: 320 }}>
-            {thread.length === 0 ? (
-              <p className="studio-journal">Start the conversation — a quick note goes a long way.</p>
-            ) : (
-              thread.map((m) => {
-                const isMine = m.sender_id === user?.id
-                return (
-                  <div
-                    key={m.id}
-                    style={{
-                      textAlign: isMine ? 'right' : 'left',
-                      marginBottom: '0.65rem',
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        maxWidth: '85%',
-                        padding: '0.6rem 0.9rem',
-                        borderRadius: 12,
-                        background: isMine ? 'var(--studio-accent-soft)' : 'var(--studio-bg)',
-                        border: '1px solid var(--studio-border)',
-                      }}
-                    >
-                      {m.message_type !== 'chat' ? (
-                        <span className="studio-badge" style={{ marginRight: '0.35rem' }}>
-                          {m.message_type}
-                        </span>
-                      ) : null}
-                      {m.body}
-                    </span>
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          <form onSubmit={handleSend}>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              {(['chat', 'reminder', 'encouragement'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className="studio-btn studio-btn--ghost"
-                  style={{
-                    padding: '0.35rem 0.6rem',
-                    fontSize: '0.75rem',
-                    background: messageType === t ? 'var(--studio-accent-soft)' : undefined,
-                  }}
-                  onClick={() => setMessageType(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            <textarea
-              className="studio-textarea"
-              placeholder="Write a message..."
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={3}
-            />
-            <button type="submit" className="studio-btn studio-btn--primary" style={{ marginTop: '0.5rem' }}>
-              Send
-            </button>
-          </form>
-        </div>
+        <StudioChatPane
+          thread={selectedThread}
+          viewerId={user?.id ?? ''}
+          messageType={messageType}
+          body={body}
+          sending={sending}
+          showBack={mobileShowPane}
+          onBack={() => setMobileShowPane(false)}
+          onBodyChange={setBody}
+          onMessageTypeChange={setMessageType}
+          onSend={handleSend}
+        />
       </div>
+
+      {showNewChat ? (
+        <NewChatModal
+          students={students}
+          existingThreadIds={existingThreadIds}
+          onStart={handleNewChatStart}
+          onClose={() => setShowNewChat(false)}
+        />
+      ) : null}
     </MarkStudioLayout>
   )
 }

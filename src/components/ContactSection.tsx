@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import ReCAPTCHA from 'react-google-recaptcha'
-import { supabase } from '../lib/supabase'
+import { submitWebsiteContactInquiry } from '../lib/contact-inquiry'
 import { TextField, Textarea, Button } from './ui'
 
 const ContactSection = () => {
@@ -13,7 +13,7 @@ const ContactSection = () => {
   const handleRecaptchaChange = (value: string | null) => {
     setIsRecaptchaVerified(!!value)
     if (value) {
-      setError('') // Clear any previous errors when reCAPTCHA is completed
+      setError('')
     }
   }
 
@@ -30,41 +30,37 @@ const ContactSection = () => {
     const firstName = (form.querySelector('[name="firstName"]') as HTMLInputElement).value
     const lastName = (form.querySelector('[name="lastName"]') as HTMLInputElement).value
     const email = (form.querySelector('[name="email"]') as HTMLInputElement).value
+    const phone = (form.querySelector('[name="phone"]') as HTMLInputElement | null)?.value?.trim()
     const message = (form.querySelector('[name="message"]') as HTMLTextAreaElement).value
 
-    // Verify CAPTCHA
-    const recaptchaValue = recaptchaRef.current?.getValue()
-    if (!recaptchaValue) {
+    const recaptchaToken = recaptchaRef.current?.getValue()
+    if (!recaptchaToken) {
       setError('Please complete the CAPTCHA verification.')
       setIsSubmitting(false)
       return
     }
 
     try {
-      const { error } = await supabase
-        .from('contact_messages')
-        .insert([
-          {
-            first_name: firstName,
-            last_name: lastName,
-            email: email,
-            message: message,
-            created_at: new Date().toISOString(),
-            type: 'contact_form'
-          }
-        ])
-
-      if (error) {
-        throw error
-      }
+      await submitWebsiteContactInquiry({
+        firstName,
+        lastName,
+        email,
+        phone: phone || undefined,
+        message,
+        recaptchaToken,
+      })
 
       setIsSubmitted(true)
       form.reset()
       recaptchaRef.current?.reset()
       setIsRecaptchaVerified(false)
-    } catch (error) {
-      console.error('Error submitting message:', error)
-      setError('Failed to send message. Please try again later.')
+    } catch (err: unknown) {
+      console.error('Error submitting message:', err)
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to send message. Please try again later.'
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -75,38 +71,25 @@ const ContactSection = () => {
       <div className="contact-container">
         <div className="contact-info">
           <h2 className="contact-title">Get in Touch</h2>
-          <p className="contact-desc">Contact me for more information and to schedule your first lesson.</p>
+          <p className="contact-desc">
+            Send a message to schedule your first lesson — Mark will see it in his studio Messages
+            and get notified right away.
+          </p>
         </div>
         {!isSubmitted ? (
           <form className="contact-form" onSubmit={handleSubmit}>
             <div className="contact-row">
-              <TextField 
-                name="firstName" 
-                placeholder="First name" 
-                required 
-              />
-              <TextField 
-                name="lastName" 
-                placeholder="Last name" 
-                required 
-              />
+              <TextField name="firstName" placeholder="First name" required />
+              <TextField name="lastName" placeholder="Last name" required />
             </div>
             <div className="contact-row">
-              <TextField 
-                name="email" 
-                type="email"
-                placeholder="Email" 
-                fullWidth
-                required 
-              />
+              <TextField name="email" type="email" placeholder="Email" fullWidth required />
             </div>
             <div className="contact-row">
-              <Textarea 
-                name="message" 
-                placeholder="Your message" 
-                fullWidth
-                required 
-              />
+              <TextField name="phone" type="tel" placeholder="Phone (optional)" fullWidth />
+            </div>
+            <div className="contact-row">
+              <Textarea name="message" placeholder="Your message" fullWidth required />
             </div>
             <div className="contact-row">
               <ReCAPTCHA
@@ -118,13 +101,13 @@ const ContactSection = () => {
                 onExpired={handleRecaptchaExpired}
               />
             </div>
-            {error && (
+            {error ? (
               <div className="contact-error" style={{ color: '#ff6b6b', marginTop: '1rem' }}>
                 {error}
               </div>
-            )}
-            <Button 
-              type="submit" 
+            ) : null}
+            <Button
+              type="submit"
               variant="primary"
               fullWidth
               loading={isSubmitting}
@@ -135,7 +118,8 @@ const ContactSection = () => {
           </form>
         ) : (
           <div className="contact-success" style={{ display: 'block' }}>
-            Request sent! Thank you for reaching out. I'll be in touch soon.
+            Message sent! Mark will see it in his studio portal and get a notification. Thank you
+            for reaching out.
           </div>
         )}
       </div>

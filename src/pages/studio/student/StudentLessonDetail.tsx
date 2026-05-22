@@ -33,17 +33,16 @@ export default function StudentLessonDetail() {
   const [uploading, setUploading] = useState(false)
 
   const reload = async () => {
-    if (!id) return
-    const l = await fetchAssignedLesson(id)
-    if (!l || l.student_id !== user?.id) {
+    if (!id || !user?.id) return
+    const [l, c] = await Promise.all([fetchAssignedLesson(id), fetchTaskCompletions(id)])
+    if (!l || l.student_id !== user.id) {
       navigate('/student/lessons')
       return
     }
     setLesson(l)
-    const c = await fetchTaskCompletions(id)
     setCompletions(c)
     if (l.status === 'not_started') {
-      await updateAssignedLesson(id, { status: 'in_progress' })
+      void updateAssignedLesson(id, { status: 'in_progress' })
     }
   }
 

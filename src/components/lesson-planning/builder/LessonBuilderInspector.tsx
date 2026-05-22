@@ -28,6 +28,7 @@ export interface AssignedDetails {
 
 interface LessonBuilderInspectorProps {
   open: boolean
+  onClose?: () => void
   details: LessonDetails
   onDetailsChange: (patch: Partial<LessonDetails>) => void
   onAddTag: (tag: string) => void
@@ -40,6 +41,7 @@ interface LessonBuilderInspectorProps {
 
 export default function LessonBuilderInspector({
   open,
+  onClose,
   details,
   onDetailsChange,
   onAddTag,
@@ -53,11 +55,20 @@ export default function LessonBuilderInspector({
 
   return (
     <aside className={`lesson-builder__inspector ${open ? 'lesson-builder__inspector--open' : ''}`}>
-      <div className="lesson-builder__inspector-tabs">
-        <button type="button" aria-selected>
-          Lesson details
-        </button>
-      </div>
+      {onClose ? (
+        <div className="lesson-builder__panel-head lesson-builder__panel-head--inspector">
+          <h2 className="lesson-builder__panel-head-title">Lesson details</h2>
+          <button type="button" className="lesson-builder__panel-close" onClick={onClose} aria-label="Close details">
+            <i className="bi bi-x-lg" />
+          </button>
+        </div>
+      ) : (
+        <div className="lesson-builder__inspector-tabs">
+          <button type="button" aria-selected>
+            Lesson details
+          </button>
+        </div>
+      )}
       <div className="lesson-builder__inspector-body">
         {variant === 'assigned' && assignedDetails?.studentName ? (
           <p className="lesson-builder__help-card" style={{ marginTop: 0, marginBottom: '0.85rem' }}>

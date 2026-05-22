@@ -103,11 +103,7 @@ export default function MarkStudents() {
         </div>
       ) : (
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '1rem',
-          }}
+          className="studio-card-grid"
         >
           {students.map((student) => (
             <Link

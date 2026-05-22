@@ -183,7 +183,7 @@ export default function StudentHome() {
 
         <section className="studio-card">
           <h3 className="studio-card__title">Your Progress</h3>
-          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+          <div className="studio-handquote-row" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
             <div
               className="studio-progress-ring"
               style={{ '--pct': progressPct } as React.CSSProperties}

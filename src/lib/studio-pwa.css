@@ -367,7 +367,7 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .studio-sidebar {
     display: none;
   }
@@ -423,13 +423,23 @@
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    padding: 0.45rem 0.2rem;
+    padding: 0.45rem 0.15rem;
     min-height: 48px;
+    min-width: 0;
     color: var(--studio-text-muted);
     text-decoration: none;
     font-size: 0.65rem;
     border-radius: 10px;
     transition: color 0.2s, background 0.2s;
+  }
+
+  .studio-mobile-nav__link span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.2;
   }
 
   .studio-mobile-nav__link i {

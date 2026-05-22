@@ -146,7 +146,7 @@ export default function MarkSchedule() {
       />
 
       {showForm ? (
-        <form className="studio-card" onSubmit={handleCreate} style={{ marginBottom: '1.25rem' }}>
+        <form className="studio-card studio-schedule-create" onSubmit={handleCreate} style={{ marginBottom: '1.25rem' }}>
           <div className="studio-grid-2">
             <label>
               <span className="studio-label">Student</span>
@@ -212,7 +212,7 @@ export default function MarkSchedule() {
               onChange={(e) => setForm({ ...form, recurrence_rule: e.target.value })}
             />
           ) : null}
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+          <div className="studio-form-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
             <button type="submit" className="studio-btn studio-btn--primary">
               Save lesson
             </button>

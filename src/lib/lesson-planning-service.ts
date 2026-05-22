@@ -38,9 +38,20 @@ export function formatLessonPlanningError(error: unknown): string {
   return 'Something went wrong saving the lesson'
 }
 
-export async function checkLessonPlanningSchema(): Promise<{ ok: boolean; message?: string }> {
+const SCHEMA_CACHE_KEY = 'lesson_planning_schema_ok_v1'
+
+export async function checkLessonPlanningSchema(options?: {
+  force?: boolean
+}): Promise<{ ok: boolean; message?: string }> {
+  if (!options?.force && typeof sessionStorage !== 'undefined') {
+    if (sessionStorage.getItem(SCHEMA_CACHE_KEY) === '1') {
+      return { ok: true }
+    }
+  }
+
   const { error } = await supabase.from('lesson_templates').select('id').limit(1)
   if (isLessonPlanningSchemaMissing(error)) {
+    sessionStorage.removeItem(SCHEMA_CACHE_KEY)
     return {
       ok: false,
       message:
@@ -48,6 +59,7 @@ export async function checkLessonPlanningSchema(): Promise<{ ok: boolean; messag
     }
   }
   if (error) return { ok: false, message: error.message }
+  sessionStorage.setItem(SCHEMA_CACHE_KEY, '1')
   return { ok: true }
 }
 
@@ -66,7 +78,7 @@ export async function fetchLessonTemplates(
 ): Promise<LessonTemplate[]> {
   let query = supabase
     .from('lesson_templates')
-    .select('*')
+    .select('*, assigned_lessons(status)')
     .eq('teacher_id', teacherId)
     .order('updated_at', { ascending: false })
 
@@ -80,41 +92,41 @@ export async function fetchLessonTemplates(
   if (isMissingTableError(error)) return []
   if (error) throw error
 
-  const templates = (data ?? []) as LessonTemplate[]
-  if (templates.length === 0) return []
+  type Row = LessonTemplate & {
+    assigned_lessons?: { status: AssignedLessonStatus }[] | null
+  }
 
-  const ids = templates.map((t) => t.id)
-  const { data: assignments } = await supabase
-    .from('assigned_lessons')
-    .select('template_id, status')
-    .in('template_id', ids)
-    .neq('status', 'archived')
-
-  const assignedMap = new Map<string, number>()
-  const completedMap = new Map<string, number>()
-  assignments?.forEach((row) => {
-    if (!row.template_id) return
-    assignedMap.set(row.template_id, (assignedMap.get(row.template_id) ?? 0) + 1)
-    if (row.status === 'completed') {
-      completedMap.set(row.template_id, (completedMap.get(row.template_id) ?? 0) + 1)
+  return ((data ?? []) as Row[]).map((row) => {
+    const { assigned_lessons, ...t } = row
+    const active = (assigned_lessons ?? []).filter((a) => a.status !== 'archived')
+    return {
+      ...(t as LessonTemplate),
+      assigned_count: active.length,
+      completed_count: active.filter((a) => a.status === 'completed').length,
     }
   })
+}
 
-  return templates.map((t) => ({
-    ...t,
-    assigned_count: assignedMap.get(t.id) ?? 0,
-    completed_count: completedMap.get(t.id) ?? 0,
-  }))
+function sortByOrder<T extends { sort_order: number }>(blocks: T[]): T[] {
+  return [...blocks].sort((a, b) => a.sort_order - b.sort_order)
 }
 
 export async function fetchLessonTemplate(id: string): Promise<LessonTemplate | null> {
-  const { data, error } = await supabase.from('lesson_templates').select('*').eq('id', id).maybeSingle()
+  const { data, error } = await supabase
+    .from('lesson_templates')
+    .select('*, lesson_template_blocks(*)')
+    .eq('id', id)
+    .maybeSingle()
   if (isMissingTableError(error)) throw new Error(formatLessonPlanningError(error))
   if (error) throw error
   if (!data) return null
 
-  const blocks = await fetchTemplateBlocks(id)
-  return { ...(data as LessonTemplate), blocks }
+  const row = data as LessonTemplate & { lesson_template_blocks?: LessonTemplateBlock[] }
+  const { lesson_template_blocks, ...template } = row
+  return {
+    ...(template as LessonTemplate),
+    blocks: sortByOrder(lesson_template_blocks ?? []),
+  }
 }
 
 export async function fetchTemplateBlocks(templateId: string): Promise<LessonTemplateBlock[]> {
@@ -232,13 +244,21 @@ export async function fetchAssignedLessons(
 }
 
 export async function fetchAssignedLesson(id: string): Promise<AssignedLesson | null> {
-  const { data, error } = await supabase.from('assigned_lessons').select('*').eq('id', id).maybeSingle()
+  const { data, error } = await supabase
+    .from('assigned_lessons')
+    .select('*, assigned_lesson_blocks(*)')
+    .eq('id', id)
+    .maybeSingle()
   if (isMissingTableError(error)) return null
   if (error) throw error
   if (!data) return null
 
-  const blocks = await fetchAssignedLessonBlocks(id)
-  return { ...(data as AssignedLesson), blocks }
+  const row = data as AssignedLesson & { assigned_lesson_blocks?: AssignedLessonBlock[] }
+  const { assigned_lesson_blocks, ...lesson } = row
+  return {
+    ...(lesson as AssignedLesson),
+    blocks: sortByOrder(assigned_lesson_blocks ?? []),
+  }
 }
 
 export async function fetchAssignedLessonBlocks(lessonId: string): Promise<AssignedLessonBlock[]> {

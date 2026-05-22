@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ScheduledLesson } from '../../types/studio'
 import {
@@ -57,6 +57,16 @@ export default function StudioScheduleView({
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => toDateKey(today))
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
   const [rescheduleValue, setRescheduleValue] = useState('')
+  const [mobileSheet, setMobileSheet] = useState<'closed' | 'day' | 'lesson'>('closed')
+  const [isNarrow, setIsNarrow] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const update = () => setIsNarrow(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   const byDay = useMemo(() => groupLessonsByDay(lessons), [lessons])
   const weeks = useMemo(
@@ -97,9 +107,12 @@ export default function StudioScheduleView({
     setSelectedLessonId(null)
   }
 
+  const closeMobileSheet = () => setMobileSheet('closed')
+
   const handleDayClick = (day: Date) => {
     setSelectedDateKey(toDateKey(day))
     setSelectedLessonId(null)
+    setMobileSheet('closed')
   }
 
   const handleLessonClick = (lesson: ScheduledLesson, e?: React.MouseEvent) => {
@@ -107,6 +120,17 @@ export default function StudioScheduleView({
     setSelectedLessonId(lesson.id)
     setSelectedDateKey(toDateKey(new Date(lesson.starts_at)))
     setRescheduleValue(toDatetimeLocalValue(new Date(lesson.starts_at)))
+    if (isNarrow) setMobileSheet('lesson')
+  }
+
+  const openDaySheet = () => {
+    if (isNarrow) setMobileSheet('day')
+  }
+
+  const scheduleSelectedDay = () => {
+    if (!onScheduleDay) return
+    onScheduleDay(toDatetimeLocalValue(selectedDate), selectedDate)
+    closeMobileSheet()
   }
 
   const renderLessonChip = (lesson: ScheduledLesson) => {
@@ -276,6 +300,91 @@ export default function StudioScheduleView({
     )
   }
 
+  const selectedDateLabel = selectedDate.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+
+  const dayLessonCount = selectedDayLessons.filter((l) => l.status !== 'cancelled').length
+
+  const mobileSheetVisible =
+    isNarrow && mobileSheet !== 'closed' && (mobileSheet === 'lesson' ? Boolean(selectedLesson) : true)
+
+  const renderMobileDayBar = () => (
+    <div className="studio-card studio-schedule-day-bar">
+      <div className="studio-schedule-day-bar__info">
+        <p className="studio-schedule-day-bar__date">{selectedDateLabel}</p>
+        <p className="studio-schedule-day-bar__meta">
+          {dayLessonCount === 0
+            ? variant === 'teacher'
+              ? 'No lessons — tap + to schedule'
+              : 'No lessons this day'
+            : `${dayLessonCount} lesson${dayLessonCount === 1 ? '' : 's'}`}
+        </p>
+      </div>
+      <div className="studio-schedule-day-bar__actions">
+        {dayLessonCount > 0 ? (
+          <button
+            type="button"
+            className="studio-schedule-day-bar__icon-btn"
+            aria-label={`View ${dayLessonCount} lessons on this day`}
+            onClick={openDaySheet}
+          >
+            <i className="bi bi-list-ul" />
+          </button>
+        ) : null}
+        {variant === 'teacher' && onScheduleDay ? (
+          <button
+            type="button"
+            className="studio-schedule-day-bar__icon-btn studio-schedule-day-bar__icon-btn--primary"
+            aria-label="Schedule a lesson on this day"
+            onClick={scheduleSelectedDay}
+          >
+            <i className="bi bi-plus-lg" />
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+
+  const renderMobileSheet = () => {
+    if (!mobileSheetVisible) return null
+    const title =
+      mobileSheet === 'lesson' && selectedLesson
+        ? 'Lesson details'
+        : selectedDate.toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          })
+
+    return (
+      <div
+        className="studio-schedule-mobile-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="schedule-sheet-title"
+        onClick={closeMobileSheet}
+      >
+        <div className="studio-schedule-mobile-sheet__panel" onClick={(e) => e.stopPropagation()}>
+          <div className="studio-schedule-mobile-sheet__head">
+            <h3 id="schedule-sheet-title">{title}</h3>
+            <button
+              type="button"
+              className="studio-btn studio-btn--ghost"
+              aria-label="Close"
+              onClick={closeMobileSheet}
+            >
+              <i className="bi bi-x-lg" />
+            </button>
+          </div>
+          {detailPanel()}
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return <p className="studio-subtext">Loading schedule…</p>
   }
@@ -327,7 +436,8 @@ export default function StudioScheduleView({
       </div>
 
       {viewMode === 'calendar' ? (
-        <div className="studio-schedule-layout">
+        <div className="studio-schedule-layout studio-schedule-layout--calendar">
+          {renderMobileDayBar()}
           <section className="studio-card studio-schedule-calendar">
             <div className="studio-schedule-weekdays">
               {WEEKDAYS.map((d) => (
@@ -368,7 +478,20 @@ export default function StudioScheduleView({
                     <span className="studio-schedule-day__num">{day.getDate()}</span>
                     <div className="studio-schedule-day__lessons">
                       {visible.map((l) => renderLessonChip(l))}
-                      {more > 0 ? <span className="studio-schedule-more">+{more} more</span> : null}
+                      {more > 0 ? (
+                        <button
+                          type="button"
+                          className="studio-schedule-more"
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDayClick(day)
+                            openDaySheet()
+                          }}
+                        >
+                          +{more} more
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 )
@@ -377,9 +500,10 @@ export default function StudioScheduleView({
           </section>
 
           <aside className="studio-card studio-schedule-panel">{detailPanel()}</aside>
+          {renderMobileSheet()}
         </div>
       ) : (
-        <div className="studio-schedule-layout">
+        <div className="studio-schedule-layout studio-schedule-layout--list">
           <section className="studio-card">
             <h3 className="studio-heading studio-heading--md" style={{ marginBottom: '0.75rem' }}>
               Upcoming
@@ -412,6 +536,7 @@ export default function StudioScheduleView({
           </section>
 
           <aside className="studio-card studio-schedule-panel">{detailPanel()}</aside>
+          {renderMobileSheet()}
 
           {pastList.length > 0 ? (
             <section className="studio-card" style={{ gridColumn: '1 / -1' }}>
@@ -426,7 +551,10 @@ export default function StudioScheduleView({
                     type="button"
                     className="studio-schedule-list-item"
                     style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left' }}
-                    onClick={() => handleLessonClick(lesson)}
+                    onClick={() => {
+                      handleLessonClick(lesson)
+                      if (isNarrow) setMobileSheet('lesson')
+                    }}
                   >
                     <div>
                       <strong>{label.primary}</strong>

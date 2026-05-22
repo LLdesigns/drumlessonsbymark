@@ -111,8 +111,8 @@ export default function MarkDashboard() {
             <h1 className="studio-page-intro__title">Welcome back, {firstName} 🤘</h1>
             <p className="studio-page-intro__sub">Here&apos;s what&apos;s happening in your studio today.</p>
           </div>
-          <Link to="/studio/lesson-notes" className="studio-btn studio-btn--outline">
-            <i className="bi bi-plus-lg" /> New Note
+          <Link to="/studio/lesson-planning" className="studio-btn studio-btn--outline">
+            <i className="bi bi-journal-richtext" /> Lesson library
           </Link>
         </div>
       </div>
@@ -184,6 +184,7 @@ export default function MarkDashboard() {
           ) : (
             messages.map((m) => {
               const otherId = m.sender_id === user?.id ? m.recipient_id : m.sender_id
+              if (!otherId) return null
               const other = studentMap.get(otherId)
               return (
                 <div key={m.id} className="studio-row">
@@ -227,9 +228,11 @@ export default function MarkDashboard() {
       </div>
 
       <section className="studio-card studio-dash-full">
-        <h3 className="studio-card__title">Recent Lesson Notes</h3>
+        <h3 className="studio-card__title">Legacy lesson notes</h3>
         {notes.length === 0 ? (
-          <p className="studio-journal">After your next lesson, capture what you worked on.</p>
+          <p className="studio-journal">
+            Add notes on each assigned lesson in the lesson library.
+          </p>
         ) : (
           notes.map((n) => {
             const student = studentMap.get(n.student_id)
@@ -248,13 +251,16 @@ export default function MarkDashboard() {
                     {n.summary ? ` · ${n.summary.slice(0, 90)}${n.summary.length > 90 ? '…' : ''}` : ''}
                   </p>
                 </div>
-                <Link to="/studio/lesson-notes" className="studio-card__link">
-                  View
+                <Link to="/studio/students" className="studio-card__link">
+                  Students
                 </Link>
               </div>
             )
           })
         )}
+        <Link to="/studio/lesson-planning" className="studio-card__link" style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+          Lesson library →
+        </Link>
       </section>
     </MarkStudioLayout>
   )

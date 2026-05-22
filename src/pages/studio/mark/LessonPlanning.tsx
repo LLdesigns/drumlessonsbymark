@@ -29,18 +29,20 @@ export default function LessonPlanning() {
   const [attachTemplate, setAttachTemplate] = useState<LessonTemplate | null>(null)
   const [schemaError, setSchemaError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [libraryLoading, setLibraryLoading] = useState(true)
 
   const load = async () => {
     if (!user?.id) return
     setLoadError(null)
-    const schema = await checkLessonPlanningSchema()
-    if (!schema.ok) {
-      setSchemaError(schema.message ?? 'Lesson planning tables are not set up.')
-      setTemplates([])
-      return
-    }
-    setSchemaError(null)
+    setLibraryLoading(true)
     try {
+      const schema = await checkLessonPlanningSchema()
+      if (!schema.ok) {
+        setSchemaError(schema.message ?? 'Lesson planning tables are not set up.')
+        setTemplates([])
+        return
+      }
+      setSchemaError(null)
       const [t, s] = await Promise.all([
         fetchLessonTemplates(user.id, {
           status: 'active',
@@ -54,6 +56,8 @@ export default function LessonPlanning() {
     } catch (err) {
       setLoadError(formatLessonPlanningError(err))
       setTemplates([])
+    } finally {
+      setLibraryLoading(false)
     }
   }
 
@@ -116,7 +120,9 @@ export default function LessonPlanning() {
           </div>
         </div>
 
-        {templates.length === 0 ? (
+        {libraryLoading ? (
+          <p className="studio-subtext">Loading lessons…</p>
+        ) : templates.length === 0 ? (
           <div className="lp-empty lp-card">
             <div className="lp-empty__icon">
               <i className="bi bi-journal-richtext" />

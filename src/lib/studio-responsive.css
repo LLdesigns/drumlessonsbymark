@@ -1,0 +1,121 @@
+/* Studio portal — shared responsive fixes for pages inside StudioShell */
+
+@media (max-width: 768px) {
+  .studio-page-intro__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .studio-page-intro__row .studio-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .studio-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .studio-student-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .studio-schedule-create .studio-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .studio-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .studio-form-actions .studio-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .studio-motivation {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .studio-motivation__img {
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  .studio-row {
+    flex-wrap: wrap;
+  }
+
+  .studio-row__time {
+    width: 100%;
+  }
+
+  .studio-handquote-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .lp-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lp-filter-bar .lp-field {
+    width: 100%;
+  }
+
+  .lp-filter-bar .lp-field input,
+  .lp-filter-bar .lp-field select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .lp-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lp-card__actions .lp-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lesson-template-card .lp-card__title {
+    font-size: 1rem;
+    word-break: break-word;
+  }
+
+  .studio-content {
+    padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px) {
+  .studio-page-intro__title {
+    font-size: 1.35rem;
+  }
+
+  .lp-page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .lp-page-header__actions {
+    width: 100%;
+  }
+
+  .lp-page-header__actions .lp-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

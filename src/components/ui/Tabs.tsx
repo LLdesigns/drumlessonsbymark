@@ -11,6 +11,8 @@ export interface TabsProps {
   activeTab: string
   onTabChange: (tabId: string) => void
   className?: string
+  /** Studio portal styling (scrollable tabs on mobile) */
+  variant?: 'default' | 'studio'
 }
 
 /**
@@ -30,35 +32,54 @@ export const Tabs: React.FC<TabsProps> = ({
   items,
   activeTab,
   onTabChange,
-  className = ''
+  className = '',
+  variant = 'default',
 }) => {
   const activeTabData = items.find(item => item.id === activeTab) || items[0]
+  const isStudio = variant === 'studio'
 
   return (
-    <div className={className}>
-      {/* Tab Headers */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid var(--color-border-default)'
-      }}>
+    <div className={isStudio ? `studio-tabs ${className}`.trim() : className}>
+      <div
+        className={isStudio ? 'studio-tabs__nav' : undefined}
+        role="tablist"
+        style={
+          isStudio
+            ? undefined
+            : {
+                display: 'flex',
+                borderBottom: '1px solid var(--color-border-default)',
+              }
+        }
+      >
         {items.map((item) => {
           const isActive = item.id === activeTab
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => onTabChange(item.id)}
-              style={{
-                flex: 1,
-                padding: 'var(--space-4)',
-                background: isActive ? 'var(--color-bg-tertiary)' : 'transparent',
-                border: 'none',
-                borderBottom: isActive ? '2px solid var(--color-brand-primary)' : '2px solid transparent',
-                cursor: 'pointer',
-                color: 'var(--color-text-primary)',
-                fontSize: 'var(--font-size-base)',
-                fontWeight: isActive ? 'var(--font-weight-semibold)' : 'var(--font-weight-normal)',
-                transition: 'var(--transition-base)'
-              }}
+              className={isStudio ? `studio-tabs__tab${isActive ? ' studio-tabs__tab--active' : ''}` : undefined}
+              style={
+                isStudio
+                  ? undefined
+                  : {
+                      flex: 1,
+                      padding: 'var(--space-4)',
+                      background: isActive ? 'var(--color-bg-tertiary)' : 'transparent',
+                      border: 'none',
+                      borderBottom: isActive
+                        ? '2px solid var(--color-brand-primary)'
+                        : '2px solid transparent',
+                      cursor: 'pointer',
+                      color: 'var(--color-text-primary)',
+                      fontSize: 'var(--font-size-base)',
+                      fontWeight: isActive
+                        ? 'var(--font-weight-semibold)'
+                        : 'var(--font-weight-normal)',
+                      transition: 'var(--transition-base)',
+                    }
+              }
               aria-selected={isActive}
               role="tab"
             >
@@ -68,8 +89,7 @@ export const Tabs: React.FC<TabsProps> = ({
         })}
       </div>
 
-      {/* Tab Content */}
-      <div role="tabpanel">
+      <div className={isStudio ? 'studio-tabs__panel' : undefined} role="tabpanel">
         {activeTabData?.content}
       </div>
     </div>

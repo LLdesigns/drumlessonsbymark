@@ -553,9 +553,11 @@ const AccountSettingsModal = ({ isOpen, onClose }: AccountSettingsModalProps) =>
       isOpen={isOpen}
       onClose={onClose}
       title="Account Settings"
-      size="md"
+      size="lg"
+      variant="studio"
     >
       <Tabs
+        variant="studio"
         items={tabItems}
         activeTab={activeTab}
         onTabChange={(tabId) =>

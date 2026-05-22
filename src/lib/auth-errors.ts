@@ -11,6 +11,11 @@ export function formatAuthErrorMessage(error: unknown, fallback = 'Something wen
 
   const lower = message.toLowerCase()
   if (lower.includes('function not found') || lower.includes('404')) {
+    if (lower.includes('submit-contact')) {
+      return (
+        'Contact form is not deployed. Run: npx supabase functions deploy submit-contact-inquiry --no-verify-jwt'
+      )
+    }
     return (
       'The create-user Edge Function is not deployed. From the project folder run: npx supabase functions deploy create-user'
     )

@@ -2,7 +2,13 @@ import type { UserProfile } from './user'
 
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'pro'
 export type LessonStatus = 'scheduled' | 'completed' | 'cancelled' | 'rescheduled'
-export type MessageType = 'chat' | 'reminder' | 'encouragement' | 'lesson_note' | 'link'
+export type MessageType =
+  | 'chat'
+  | 'reminder'
+  | 'encouragement'
+  | 'lesson_note'
+  | 'link'
+  | 'contact_form'
 export type MilestoneType = 'lesson' | 'song' | 'rudiment' | 'streak' | 'custom'
 
 export interface StudentProfile {
@@ -73,13 +79,17 @@ export interface PracticeAssignment {
 
 export interface StudioMessage {
   id: string
-  sender_id: string
+  sender_id: string | null
   recipient_id: string
   body: string
   message_type: MessageType
   link_url?: string | null
   read_at?: string | null
   created_at: string
+  guest_name?: string | null
+  guest_email?: string | null
+  guest_phone?: string | null
+  is_website_inquiry?: boolean
   sender?: UserProfile
   recipient?: UserProfile
 }

@@ -18,6 +18,9 @@ import {
 import type { LessonStarterTemplate } from '../../../lib/lesson-starter-templates'
 import type { LessonBlockContent, LessonBlockType, LessonTemplateSkillLevel } from '../../../types/lesson-planning'
 import LessonPlanningSchemaBanner from '../LessonPlanningSchemaBanner'
+import LessonBuilderDrawerBackdrop from './LessonBuilderDrawerBackdrop'
+import LessonBuilderPanelHead from './LessonBuilderPanelHead'
+import { useLessonBuilderDrawers } from '../../../hooks/useLessonBuilderDrawers'
 import {
   createLessonTemplate,
   fetchLessonTemplate,
@@ -75,10 +78,15 @@ export default function LessonBuilderWorkspace({
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null)
   const [showStarterPicker, setShowStarterPicker] = useState(isNew)
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [inspectorOpen, setInspectorOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 901px)').matches : true
-  )
+  const {
+    sidebarOpen,
+    inspectorOpen,
+    isMobile,
+    anyOpen,
+    closeAll,
+    openSidebar,
+    openInspector,
+  } = useLessonBuilderDrawers()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [localTemplateId, setLocalTemplateId] = useState<string | undefined>(templateId)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -144,6 +152,7 @@ export default function LessonBuilderWorkspace({
       next.delete(blockId)
       return next
     })
+    if (isMobile) openInspector()
   }
 
   const applyStarter = (starter: LessonStarterTemplate) => {
@@ -243,8 +252,21 @@ export default function LessonBuilderWorkspace({
 
   if (loading) {
     return (
-      <div className="lesson-builder" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--lb-muted)' }}>Loading lesson…</p>
+      <div className="lesson-builder lesson-builder--loading">
+        <header className="lesson-builder__header">
+          <div className="lesson-builder__header-left">
+            <Link to="/studio/lesson-planning" className="lesson-builder__back" title="Back to library">
+              <i className="bi bi-arrow-left" />
+            </Link>
+            <div className="lesson-builder__title-wrap">
+              <h1 className="lesson-builder__title">Loading lesson…</h1>
+            </div>
+          </div>
+        </header>
+        <div className="lesson-builder__loading-body">
+          <div className="lesson-builder__loading-shimmer" />
+          <div className="lesson-builder__loading-shimmer lesson-builder__loading-shimmer--short" />
+        </div>
       </div>
     )
   }
@@ -260,10 +282,10 @@ export default function LessonBuilderWorkspace({
           <Link to="/studio/lesson-planning" className="lesson-builder__back" title="Back to library">
             <i className="bi bi-arrow-left" />
           </Link>
-          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={() => setSidebarOpen(true)} title="Blocks">
+          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={openSidebar} title="Blocks">
             <i className="bi bi-list" />
           </button>
-          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={() => setInspectorOpen(true)} title="Details">
+          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={openInspector} title="Details">
             <i className="bi bi-sliders" />
           </button>
           <div className="lesson-builder__title-wrap">
@@ -366,7 +388,9 @@ export default function LessonBuilderWorkspace({
         </div>
       ) : (
       <div className="lesson-builder__body">
+        <LessonBuilderDrawerBackdrop visible={isMobile && anyOpen} onClose={closeAll} />
         <aside className={`lesson-builder__sidebar ${sidebarOpen ? 'lesson-builder__sidebar--open' : ''}`}>
+          {isMobile ? <LessonBuilderPanelHead title="Lesson blocks" onClose={closeAll} /> : null}
           <div className="lesson-builder__sidebar-head">
             <span className="lesson-builder__badge">Template</span>
             <p className="lesson-builder__sidebar-title">{title.slice(0, 28)}{title.length > 28 ? '…' : ''}</p>
@@ -390,8 +414,9 @@ export default function LessonBuilderWorkspace({
                     }
                   }}
                   onClick={() => {
-                    setSelectedBlockId(block.id)
+                    selectBlock(block.id)
                     document.getElementById(`block-${block.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    if (isMobile) closeAll()
                   }}
                 >
                   <span className="lesson-builder__outline-num">{i + 1}</span>
@@ -481,6 +506,7 @@ export default function LessonBuilderWorkspace({
 
         <LessonBuilderInspector
           open={inspectorOpen}
+          onClose={isMobile ? closeAll : undefined}
           details={{
             title,
             shortDescription,

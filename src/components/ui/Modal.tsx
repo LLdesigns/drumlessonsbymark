@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalBodyLock } from '../../hooks/useModalBodyLock'
 import { Button } from './Button'
 import { Card } from './Card'
 
@@ -33,7 +34,7 @@ export const Modal: React.FC<ModalProps> = ({
   showCloseButton = true,
   closeOnOverlayClick = true
 }) => {
-  // Close on Escape key
+  // Close on Escape key + lock body scroll while open
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -44,7 +45,11 @@ export const Modal: React.FC<ModalProps> = ({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, onClose])
 
+  useModalBodyLock(isOpen)
+
   if (!isOpen) return null
+
+  const sizeClass = `studio-modal--${size}`
 
   const sizeClasses = {
     sm: { maxWidth: '400px' },
@@ -80,7 +85,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       {isStudio ? (
         <div
-          className="studio-modal"
+          className={`studio-modal ${sizeClass}`}
           style={{ maxWidth: sizeClasses[size].maxWidth }}
           onClick={(e) => e.stopPropagation()}
           role="dialog"

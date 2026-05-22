@@ -63,6 +63,136 @@
   }
 }
 
+/* Compact day controls above calendar on small screens */
+.studio-schedule-day-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0;
+}
+
+.studio-schedule-day-bar__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.studio-schedule-day-bar__date {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.studio-schedule-day-bar__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--studio-text-muted);
+}
+
+.studio-schedule-day-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.studio-schedule-day-bar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--studio-border);
+  background: var(--studio-bg);
+  color: var(--studio-text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.studio-schedule-day-bar__icon-btn:hover {
+  background: var(--studio-accent-soft);
+  border-color: var(--studio-accent);
+  color: var(--studio-accent);
+}
+
+.studio-schedule-day-bar__icon-btn--primary {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+  color: #1a0a3c;
+}
+
+.studio-app--student .studio-schedule-day-bar__icon-btn--primary {
+  color: #fff;
+}
+
+.studio-schedule-mobile-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.studio-schedule-mobile-sheet__panel {
+  width: 100%;
+  max-height: min(85vh, 520px);
+  overflow-y: auto;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: var(--studio-bg-card);
+  border: 1px solid var(--studio-border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.studio-schedule-mobile-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.studio-schedule-mobile-sheet__head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .studio-schedule-layout--calendar .studio-schedule-panel {
+    display: none;
+  }
+
+  .studio-schedule-layout--calendar .studio-schedule-day-bar {
+    display: flex;
+    order: 1;
+  }
+
+  .studio-schedule-layout--calendar .studio-schedule-calendar {
+    order: 2;
+  }
+
+  .studio-schedule-layout--list .studio-schedule-panel {
+    display: none;
+  }
+
+  .studio-schedule-day {
+    min-height: 64px;
+  }
+
+  .studio-schedule-lesson {
+    font-size: 0.62rem;
+    padding: 0.15rem 0.25rem;
+  }
+}
+
 .studio-schedule-calendar {
   padding: 0;
   overflow: hidden;

@@ -6,6 +6,7 @@ import StudioNotificationBell from './StudioNotificationBell'
 import StudioPortalChrome from './StudioPortalChrome'
 import '../../lib/studio-tokens.css'
 import '../../lib/studio-pwa.css'
+import '../../lib/studio-responsive.css'
 
 export interface StudioNavItem {
   path: string

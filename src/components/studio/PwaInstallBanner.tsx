@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
+  hasDeferredInstallPrompt,
+  runDeferredInstallPrompt,
+  subscribePwaInstall,
+} from '../../lib/pwa-install-controller'
+import {
   dismissInstallPrompt,
   getInstallPlatform,
   isIOS,
@@ -8,15 +13,14 @@ import {
   wasInstallPromptDismissed,
 } from '../../lib/pwa'
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
 export default function PwaInstallBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [canInstall, setCanInstall] = useState(false)
   const [visible, setVisible] = useState(false)
   const [showIosSteps, setShowIosSteps] = useState(false)
+
+  useEffect(() => {
+    return subscribePwaInstall(() => setCanInstall(hasDeferredInstallPrompt()))
+  }, [])
 
   useEffect(() => {
     if (!isMobileDevice() || isStandalonePwa() || wasInstallPromptDismissed()) return
@@ -27,15 +31,8 @@ export default function PwaInstallBanner() {
       return () => clearTimeout(t)
     }
 
-    const onBip = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setVisible(true)
-    }
-
-    window.addEventListener('beforeinstallprompt', onBip)
-    return () => window.removeEventListener('beforeinstallprompt', onBip)
-  }, [])
+    if (canInstall) setVisible(true)
+  }, [canInstall])
 
   if (!visible) return null
 
@@ -44,11 +41,8 @@ export default function PwaInstallBanner() {
       setShowIosSteps(true)
       return
     }
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
+    const outcome = await runDeferredInstallPrompt()
     if (outcome === 'accepted') setVisible(false)
-    setDeferredPrompt(null)
   }
 
   const handleDismiss = () => {

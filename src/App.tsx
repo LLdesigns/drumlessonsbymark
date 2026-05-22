@@ -17,7 +17,6 @@ import MarkStudents from './pages/studio/mark/Students'
 import MarkStudentDetail from './pages/studio/mark/StudentDetail'
 import MarkSchedule from './pages/studio/mark/Schedule'
 import MarkMessages from './pages/studio/mark/Messages'
-import MarkLessonNotes from './pages/studio/mark/LessonNotes'
 import MarkLessonPlanning from './pages/studio/mark/LessonPlanning'
 import LessonBuilder, { LegacyLessonBuilderRedirect } from './pages/studio/mark/LessonBuilder'
 import AssignedLessonEdit from './pages/studio/mark/AssignedLessonEdit'
@@ -140,14 +139,7 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/studio/lesson-notes"
-        element={
-          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
-            <MarkLessonNotes />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/studio/lesson-notes" element={<Navigate to="/studio/lesson-planning" replace />} />
       <Route
         path="/studio/lesson-planning"
         element={

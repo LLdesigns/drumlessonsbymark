@@ -16,6 +16,13 @@ function isMissingTableError(error: { code?: string; message?: string } | null) 
   return error.code === '42P01' || error.message?.includes('does not exist') === true
 }
 
+export async function fetchProfileByUserId(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle()
+  if (isMissingTableError(error)) return null
+  if (error) throw error
+  return (data as UserProfile) ?? null
+}
+
 export async function fetchTeacherStudents(
   teacherId: string,
   userRole?: UserRole | null
@@ -256,6 +263,14 @@ export async function fetchStudentMilestones(studentId: string): Promise<Student
   if (isMissingTableError(error)) return []
   if (error) throw error
   return (data ?? []) as StudentMilestone[]
+}
+
+export function isWebsiteInquiryMessage(message: StudioMessage): boolean {
+  return Boolean(message.is_website_inquiry)
+}
+
+export function websiteInquiryLabel(message: StudioMessage): string {
+  return message.guest_name?.trim() || 'Website visitor'
 }
 
 export async function getStudentTeacherId(studentId: string): Promise<string | null> {

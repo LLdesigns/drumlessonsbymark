@@ -16,13 +16,16 @@ import {
   saveAssignedLessonBlocks,
   updateAssignedLesson,
 } from '../../../lib/lesson-planning-service'
-import { displayName, fetchTeacherStudents } from '../../../lib/studio-service'
+import { displayName, fetchProfileByUserId } from '../../../lib/studio-service'
 import { useAuthStore } from '../../../store/auth'
 import BlockPickerModal from './BlockPickerModal'
 import CanvasBlockCard from './CanvasBlockCard'
 import LessonBuilderInspector, { type AssignedDetails } from './LessonBuilderInspector'
 import TeachModeView from './TeachModeView'
 import LessonAssignedNotesPanel from '../LessonAssignedNotesPanel'
+import LessonBuilderDrawerBackdrop from './LessonBuilderDrawerBackdrop'
+import LessonBuilderPanelHead from './LessonBuilderPanelHead'
+import { useLessonBuilderDrawers } from '../../../hooks/useLessonBuilderDrawers'
 import '../../../lib/lesson-builder.css'
 
 interface AssignedLessonWorkspaceProps {
@@ -31,7 +34,7 @@ interface AssignedLessonWorkspaceProps {
 
 export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWorkspaceProps) {
   const navigate = useNavigate()
-  const { user, userRole } = useAuthStore()
+  const { user } = useAuthStore()
 
   const [title, setTitle] = useState('')
   const [shortDescription, setShortDescription] = useState('')
@@ -60,10 +63,15 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
   const [teachMode, setTeachMode] = useState(false)
   const [showBlockPicker, setShowBlockPicker] = useState(false)
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [inspectorOpen, setInspectorOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 901px)').matches : true
-  )
+  const {
+    sidebarOpen,
+    inspectorOpen,
+    isMobile,
+    anyOpen,
+    closeAll,
+    openSidebar,
+    openInspector,
+  } = useLessonBuilderDrawers()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -77,15 +85,14 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
 
   useEffect(() => {
     if (!assignedId || !user?.id) return
-    Promise.all([fetchAssignedLesson(assignedId), fetchTeacherStudents(user.id, userRole)]).then(
-      ([lesson, students]) => {
+    fetchAssignedLesson(assignedId).then(async (lesson) => {
         if (!lesson) {
           navigate('/studio/lesson-planning')
           return
         }
         setTemplateId(lesson.template_id ?? null)
         setLessonTeacherId(lesson.teacher_id)
-        const student = students.find((s) => s.user_id === lesson.student_id)
+        const student = await fetchProfileByUserId(lesson.student_id)
         setTitle(lesson.title)
         setShortDescription(lesson.short_description ?? '')
         setCategory(lesson.category ?? 'Technique')
@@ -113,9 +120,11 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
           }))
         )
         setLoading(false)
-      }
-    )
-  }, [assignedId, user?.id, userRole, navigate])
+      })
+      .catch(() => {
+        navigate('/studio/lesson-planning')
+      })
+  }, [assignedId, user?.id, navigate])
 
   const selectBlock = (blockId: string) => {
     setSelectedBlockId(blockId)
@@ -124,6 +133,7 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
       next.delete(blockId)
       return next
     })
+    if (isMobile) openInspector()
   }
 
   const addBlock = (type: LessonBlockType, atIndex?: number) => {
@@ -213,10 +223,10 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
           <Link to={lessonStudentsUrl} className="lesson-builder__back" title="Back">
             <i className="bi bi-arrow-left" />
           </Link>
-          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={() => setSidebarOpen(true)}>
+          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={openSidebar} title="Blocks">
             <i className="bi bi-list" />
           </button>
-          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={() => setInspectorOpen(true)}>
+          <button type="button" className="lesson-builder__mobile-toggle lesson-builder__btn" onClick={openInspector} title="Details">
             <i className="bi bi-sliders" />
           </button>
           <div className="lesson-builder__title-wrap">
@@ -246,7 +256,9 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
       ) : null}
 
       <div className="lesson-builder__body">
+        <LessonBuilderDrawerBackdrop visible={isMobile && anyOpen} onClose={closeAll} />
         <aside className={`lesson-builder__sidebar ${sidebarOpen ? 'lesson-builder__sidebar--open' : ''}`}>
+          {isMobile ? <LessonBuilderPanelHead title="Lesson blocks" onClose={closeAll} /> : null}
           <div className="lesson-builder__sidebar-head">
             <span className="lesson-builder__badge" style={{ background: 'rgba(109, 212, 160, 0.2)', color: '#6dd4a0' }}>Assigned</span>
             <p className="lesson-builder__sidebar-title">{assigned.studentName}</p>
@@ -270,8 +282,9 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
                     }
                   }}
                   onClick={() => {
-                    setSelectedBlockId(block.id)
+                    selectBlock(block.id)
                     document.getElementById(`block-${block.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    if (isMobile) closeAll()
                   }}
                 >
                   <span className="lesson-builder__outline-num">{i + 1}</span>
@@ -354,6 +367,7 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
 
         <LessonBuilderInspector
           open={inspectorOpen}
+          onClose={isMobile ? closeAll : undefined}
           variant="assigned"
           hideTags
           assignedDetails={assigned}

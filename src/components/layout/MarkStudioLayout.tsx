@@ -6,10 +6,9 @@ import { roleDisplayLabel } from '../../lib/studio-service'
 const markNav: StudioNavItem[] = [
   { path: '/studio/dashboard', label: 'Dashboard', icon: 'bi-grid' },
   { path: '/studio/students', label: 'Students', icon: 'bi-people' },
-  { path: '/studio/lesson-planning', label: 'Lesson Library', icon: 'bi-journal-richtext' },
+  { path: '/studio/lesson-planning', label: 'Library', icon: 'bi-journal-richtext' },
   { path: '/studio/schedule', label: 'Schedule', icon: 'bi-calendar-week' },
   { path: '/studio/messages', label: 'Messages', icon: 'bi-chat-dots' },
-  { path: '/studio/lesson-notes', label: 'Lesson Notes', icon: 'bi-journal-text' },
 ]
 
 interface MarkStudioLayoutProps {

@@ -158,7 +158,7 @@ export default function MarkStudentDetail() {
           </div>
         </section>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="studio-student-detail-grid">
           <section className="studio-card">
             <h3 className="studio-heading studio-heading--md" style={{ marginBottom: '0.75rem' }}>
               Lesson history
@@ -187,8 +187,11 @@ export default function MarkStudentDetail() {
                 </p>
               ))
             )}
-            <Link to="/studio/lesson-notes" style={{ color: 'var(--studio-accent)', fontSize: '0.85rem' }}>
-              Write a note →
+            <Link
+              to="/studio/lesson-planning"
+              style={{ color: 'var(--studio-accent)', fontSize: '0.85rem' }}
+            >
+              Assign from library →
             </Link>
           </section>
 

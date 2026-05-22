@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import type { UserRole } from '../types/user'
 import { getDefaultPathForRole } from '../lib/permissions'
+import { getLoginPathForPathname, getLoginPathForRole } from '../lib/login-portal'
+import AuthProgressScreen from './AuthProgressScreen'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -15,47 +17,21 @@ export default function ProtectedRoute({
   allowedRoles,
   requirePasswordChange = false
 }: ProtectedRouteProps) {
-  const { user, userRole, mustChangePassword, loading, session } = useAuthStore()
+  const location = useLocation()
+  const { user, userRole, mustChangePassword, authReady } = useAuthStore()
 
-  // Only show loading on initial auth check (when we have no session info yet)
-  // Once authenticated, don't show loading when navigating between routes
-  const isInitialLoad = loading && !session && !user
-  
-  if (isInitialLoad) {
+  // Full-screen auth UI only on first app load — never when switching studio pages
+  if (!authReady) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'var(--color-bg-primary)',
-        color: 'var(--color-text-primary)'
-      }}>
-        <div>Loading...</div>
-      </div>
+      <AuthProgressScreen
+        message="Checking your session…"
+        subtitle="Mark's Drum Studio"
+      />
     )
   }
 
-  // Still loading but have session - wait for user profile to load
-  if (loading && session && !user) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'var(--color-bg-primary)',
-        color: 'var(--color-text-primary)'
-      }}>
-        <div>Restoring session...</div>
-      </div>
-    )
-  }
-
-  // Only redirect if loading is complete AND there's no user
-  // This prevents redirecting while session is being restored
-  if (!loading && !user) {
-    return <Navigate to="/" replace />
+  if (!user) {
+    return <Navigate to={getLoginPathForPathname(location.pathname)} replace />
   }
 
   // If password change is required, redirect to change password page
@@ -71,7 +47,7 @@ export default function ProtectedRoute({
   if (allowedRoles && allowedRoles.length > 0) {
     if (!userRole || !allowedRoles.includes(userRole)) {
       // Redirect to appropriate dashboard based on role, or login
-      const redirectPath = getDefaultPathForRole(userRole) || '/login'
+      const redirectPath = getDefaultPathForRole(userRole) || getLoginPathForRole(userRole)
       return <Navigate to={redirectPath} replace />
     }
   }

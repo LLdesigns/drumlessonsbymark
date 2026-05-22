@@ -10,12 +10,18 @@ import AboutSection from '../components/AboutSection'
 import MediaSection from '../components/MediaSection'
 import ContactSection from '../components/ContactSection'
 import Footer from '../components/Footer'
-import { theme } from '../lib/theme'
+import ScrollToTopButton from '../components/ScrollToTopButton'
+import { applyThemeMode, resolveThemeMode } from '../lib/theme-preference'
+import { useThemeStore } from '../store/themeStore'
 
 function Home() {
   useEffect(() => {
-    // Force dark theme for landing page
-    theme.setTheme('dark')
+    // Public marketing page stays on the original dark presentation
+    applyThemeMode('dark')
+    return () => {
+      const { preference } = useThemeStore.getState()
+      applyThemeMode(resolveThemeMode(preference))
+    }
   }, [])
 
   return (
@@ -33,6 +39,7 @@ function Home() {
         <ContactSection />
       </main>
       <Footer />
+      <ScrollToTopButton />
     </div>
   )
 }

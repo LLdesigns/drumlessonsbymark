@@ -54,11 +54,14 @@ serve(async (req) => {
     }
 
     const requestingRole = roleData.role
-    const { email, firstName, lastName, role, createdBy } = await req.json()
+    const { email, firstName, lastName, role, createdBy, teacherId, studioProfile } = await req.json()
 
-    // Permission checks: Only admins can create teachers and authors, teachers can create students
+    // Permission checks: Only admins can create teachers and authors, teachers/admins can create students
     if (requestingRole === 'teacher' && role !== 'student') {
       throw new Error('Teachers can only create students')
+    }
+    if (role === 'student' && requestingRole !== 'admin' && requestingRole !== 'teacher') {
+      throw new Error('Only studio staff can add students')
     }
     if (requestingRole !== 'admin' && (role === 'teacher' || role === 'author')) {
       throw new Error(`Only admins can create ${role}s`)
@@ -103,7 +106,13 @@ serve(async (req) => {
       }
     })
 
-    if (authError) throw authError
+    if (authError) {
+      const msg = authError.message || 'Failed to create auth user'
+      if (/already been registered|already exists|duplicate/i.test(msg)) {
+        throw new Error(`A user with email ${email} already exists. Use password reset or the manual SQL script (supabase/sql/CREATE_STUDIO_USER_MANUAL.sql).`)
+      }
+      throw new Error(msg)
+    }
     if (!authData.user) throw new Error('Failed to create user')
 
     // Create profile
@@ -158,17 +167,41 @@ serve(async (req) => {
     // Note: 'author' role doesn't need a separate table - they're just users with author role
     // Authors can be treated similar to teachers for course creation permissions if needed
 
-    // If student is created by a teacher, create teacher_students relationship
-    if (role === 'student' && requestingRole === 'teacher') {
+    // Link student to Mark's studio (teacher or admin creating on behalf of a teacher)
+    if (role === 'student') {
+      const linkTeacherId =
+        requestingRole === 'teacher' ? user.id : (teacherId || user.id)
+
       const { error: relationError } = await supabaseAdmin
         .from('teacher_students')
-        .insert({
-          teacher_id: user.id,
-          student_id: authData.user.id
-        })
+        .upsert(
+          {
+            teacher_id: linkTeacherId,
+            student_id: authData.user.id,
+          },
+          { onConflict: 'teacher_id,student_id' }
+        )
 
       if (relationError) {
         console.error('Failed to create teacher-student relation:', relationError)
+        throw new Error('Student account created but could not link to your studio. Contact support.')
+      }
+
+      if (studioProfile && typeof studioProfile === 'object') {
+        const { error: spError } = await supabaseAdmin.from('student_profiles').upsert(
+          {
+            student_id: authData.user.id,
+            teacher_id: linkTeacherId,
+            age: studioProfile.age ?? null,
+            skill_level: studioProfile.skill_level ?? null,
+            goals: studioProfile.goals ?? null,
+            favorite_music: studioProfile.favorite_music ?? null,
+          },
+          { onConflict: 'student_id' }
+        )
+        if (spError) {
+          console.error('Failed to create student profile:', spError)
+        }
       }
     }
 
@@ -183,11 +216,24 @@ serve(async (req) => {
         status: 200,
       },
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : 'Failed to create user'
+
+    const missingEnv =
+      !Deno.env.get('SUPABASE_URL') || !Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const hint = missingEnv
+      ? ' Edge function secrets missing: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY when deploying.'
+      : ''
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Failed to create user'
+        error: message + hint,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -13,12 +13,11 @@ const Hero = () => {
     const infoSection = document.getElementById('info-section')
     if (infoSection) {
       infoSection.scrollIntoView({ behavior: 'smooth' })
-      // Open all accordions with dramatic animation
       const accordionItems = document.querySelectorAll('.accordion-item')
       accordionItems.forEach((item, idx) => {
         setTimeout(() => {
           item.classList.add('open', 'dramatic')
-        }, idx * 350) // stagger for drama
+        }, idx * 350)
       })
       setTimeout(() => {
         accordionItems.forEach(item => item.classList.remove('dramatic'))

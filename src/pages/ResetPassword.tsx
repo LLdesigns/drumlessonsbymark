@@ -89,7 +89,7 @@ const ResetPassword = () => {
       
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('/login', { replace: true })
+        navigate('/login', { replace: true }) // portal picker
       }, 2000)
     } catch (error: any) {
       console.error('Password reset error:', error)

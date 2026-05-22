@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import { updateOwnProfile, type ProfileUpdateInput } from '../lib/profile-service'
 import type { User, Session } from '@supabase/supabase-js'
 import type { UserProfile, UserRole } from '../types/user'
 
@@ -11,11 +12,15 @@ interface AuthState {
   mustChangePassword: boolean
   /** True when public.profiles / user_roles are missing (migrations not applied to this Supabase project). */
   databaseSchemaMissing: boolean
+  /** True only during sign-in / sign-out / first app hydration — not route changes */
   loading: boolean
+  /** False until the first checkAuth() finishes (success or no session) */
+  authReady: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   checkAuth: () => Promise<void>
   fetchUserProfile: () => Promise<void>
+  updateProfile: (input: ProfileUpdateInput) => Promise<void>
   updatePassword: (newPassword: string) => Promise<void>
 }
 
@@ -33,7 +38,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userRole: null,
   mustChangePassword: false,
   databaseSchemaMissing: false,
-  loading: true,
+  loading: false,
+  authReady: false,
 
   signIn: async (email: string, password: string) => {
     set({ loading: true })
@@ -64,8 +70,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Fetch user profile after successful login
       // This must complete before redirecting
       await get().fetchUserProfile()
-      
-      set({ loading: false })
+
+      set({ loading: false, authReady: true })
     } catch (error) {
       set({ loading: false })
       // Clear any partial state on error (keep databaseSchemaMissing — set only by fetchUserProfile)
@@ -75,7 +81,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    set({ loading: true })
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
@@ -83,22 +88,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Clear session expiration from localStorage
       localStorage.removeItem('session_expiration')
       
-      set({ 
-        user: null, 
-        session: null, 
+      set({
+        user: null,
+        session: null,
         userProfile: null,
         userRole: null,
         mustChangePassword: false,
-        loading: false 
+        loading: false,
+        authReady: true,
       })
     } catch (error) {
-      set({ loading: false })
+      set({ loading: false, authReady: true })
       throw error
     }
   },
 
   checkAuth: async () => {
-    set({ loading: true })
+    const showBootstrapLoader = !get().authReady
+    if (showBootstrapLoader) {
+      set({ loading: true })
+    }
     try {
       // First, check the actual Supabase session (most reliable)
       // This will automatically restore from localStorage if persistSession is true
@@ -111,14 +120,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // If there's no session, clear everything
       if (!session) {
         localStorage.removeItem('session_expiration')
-        set({ 
+        set({
           user: null,
           session: null,
           userProfile: null,
           userRole: null,
           mustChangePassword: false,
           databaseSchemaMissing: false,
-          loading: false
+          loading: false,
+          authReady: true,
         })
         return
       }
@@ -143,7 +153,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               localStorage.setItem('session_expiration', expirationTime.toString())
               set({ user: refreshData.session.user, session: refreshData.session })
               await get().fetchUserProfile()
-              set({ loading: false })
+              set({ loading: false, authReady: true })
               return
             } else if (refreshError) {
               // Refresh failed - but session might still be valid for a short time
@@ -166,13 +176,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       // Fetch user profile if session exists
       await get().fetchUserProfile()
-      
-      set({ loading: false })
+
+      set({ loading: false, authReady: true })
     } catch (error) {
       console.error('Auth check error:', error)
-      // Don't clear session on error - might be a network issue
-      // Just set loading to false and let Supabase handle it
-      set({ loading: false })
+      set({ loading: false, authReady: true })
     }
   },
 
@@ -219,39 +227,64 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return
       }
 
+      const role = roleResult.data?.role as UserRole | undefined
+
+      if (rErr && !isMissingSchemaError(rErr)) {
+        console.warn('User role fetch error:', rErr)
+      }
+
       if (pErr) {
         console.warn('User profile fetch error:', pErr)
         set({
           userProfile: null,
-          userRole: null,
+          userRole: role || null,
           mustChangePassword: false,
-          databaseSchemaMissing: false
+          databaseSchemaMissing: false,
         })
         return
       }
 
       if (!profileResult.data) {
         console.warn(
-          'No profile row for this user. If tables exist, insert a row in public.profiles for this auth user_id, ' +
-            'or sign up again after migrations so the handle_new_user trigger can run.'
+          'No profile row for this user. Role from user_roles is still applied. ' +
+            'Run supabase/sql/ONBOARD_MARK_AND_LUKE.sql to create a profiles row.'
         )
         set({
           userProfile: null,
-          userRole: null,
+          userRole: role || null,
           mustChangePassword: false,
-          databaseSchemaMissing: false
+          databaseSchemaMissing: false,
         })
         return
       }
 
       const profile = profileResult.data
-      const role = roleResult.data?.role as UserRole | undefined
+      const meta = user.user_metadata as Record<string, unknown> | undefined
 
-      set({ 
-        userProfile: { ...profile, role },
+      // Prefer public.profiles; fill gaps from auth metadata / email when columns are empty
+      const enrichedProfile = {
+        ...profile,
+        email: profile.email ?? user.email ?? null,
+        first_name:
+          profile.first_name ??
+          (typeof meta?.first_name === 'string' ? meta.first_name : null) ??
+          null,
+        last_name:
+          profile.last_name ??
+          (typeof meta?.last_name === 'string' ? meta.last_name : null) ??
+          null,
+        display_name:
+          profile.display_name ??
+          (typeof meta?.display_name === 'string' ? meta.display_name : null) ??
+          null,
+        role,
+      }
+
+      set({
+        userProfile: enrichedProfile,
         userRole: role || null,
         mustChangePassword: profile.must_change_password || false,
-        databaseSchemaMissing: false
+        databaseSchemaMissing: false,
       })
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -262,6 +295,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         databaseSchemaMissing: false
       })
     }
+  },
+
+  updateProfile: async (input: ProfileUpdateInput) => {
+    const { user } = get()
+    if (!user) throw new Error('You must be signed in to update your profile.')
+
+    await updateOwnProfile(user.id, input)
+    await get().fetchUserProfile()
   },
 
   updatePassword: async (newPassword: string) => {

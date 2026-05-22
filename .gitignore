@@ -10,7 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dev-dist
 .vite
+.cursor
+.agents
+skills-lock.json
 *.local
 
 # Env (keep secrets out of git; use .env.example as template)

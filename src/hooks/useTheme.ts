@@ -1,69 +1,27 @@
-import { useEffect, useState } from 'react'
-import { theme, getToken } from '../lib/theme'
+import { useEffect } from 'react'
+import { useAuthStore } from '../store/auth'
+import { useThemeStore } from '../store/themeStore'
+import { getToken } from '../lib/theme'
+import type { ThemePreference } from '../lib/theme-preference'
 
 /**
- * React hook for accessing design tokens
- * Similar to Pando v1's useTheme hook
- * 
- * @example
- * const { colors, spacing, typography } = useTheme()
- * const primaryColor = colors.brand.primary
+ * Theme hook — syncs with Supabase profile when logged in.
  */
 export function useTheme() {
-  const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>(() => {
-    // Initialize from localStorage or default to dark
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null
-      if (savedTheme) {
-        theme.setTheme(savedTheme)
-        return savedTheme
-      }
-    }
-    return 'dark'
-  })
+  const { user } = useAuthStore()
+  const { preference, resolved, ready, setPreference, toggleMode, init } = useThemeStore()
 
   useEffect(() => {
-    // Set initial theme on mount
-    theme.setTheme(currentTheme)
-    
-    // Listen for theme changes
-    const observer = new MutationObserver(() => {
-      const newTheme = theme.getTheme()
-      setCurrentTheme(newTheme)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('theme', newTheme)
-      }
-    })
-    
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    })
-    
-    return () => observer.disconnect()
-  }, [])
-  
-  const toggleTheme = () => {
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-    theme.setTheme(newTheme)
-    setCurrentTheme(newTheme)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', newTheme)
-    }
-  }
+    if (!ready) init()
+  }, [ready, init])
 
   return {
-    theme: currentTheme,
-    setTheme: (newTheme: 'dark' | 'light') => {
-      theme.setTheme(newTheme)
-      setCurrentTheme(newTheme)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('theme', newTheme)
-      }
-    },
-    toggleTheme,
+    theme: resolved,
+    preference,
+    setTheme: (mode: 'dark' | 'light') => setPreference(mode, user?.id ?? null),
+    setPreference: (pref: ThemePreference) => setPreference(pref, user?.id ?? null),
+    toggleTheme: () => toggleMode(user?.id ?? null),
     tokens: {
-      // Brand colors
       colors: {
         brand: {
           primary: () => getToken('--color-brand-primary'),
@@ -104,82 +62,6 @@ export function useTheme() {
           infoLight: () => getToken('--color-info-light'),
         },
       },
-      // Typography
-      typography: {
-        fontFamily: {
-          display: () => getToken('--font-family-display'),
-          body: () => getToken('--font-family-body'),
-          button: () => getToken('--font-family-button'),
-          accent: () => getToken('--font-family-accent'),
-        },
-        fontSize: {
-          xs: () => getToken('--font-size-xs'),
-          sm: () => getToken('--font-size-sm'),
-          base: () => getToken('--font-size-base'),
-          md: () => getToken('--font-size-md'),
-          lg: () => getToken('--font-size-lg'),
-          xl: () => getToken('--font-size-xl'),
-          '2xl': () => getToken('--font-size-2xl'),
-          '3xl': () => getToken('--font-size-3xl'),
-          '4xl': () => getToken('--font-size-4xl'),
-          '5xl': () => getToken('--font-size-5xl'),
-          '6xl': () => getToken('--font-size-6xl'),
-          '7xl': () => getToken('--font-size-7xl'),
-          '8xl': () => getToken('--font-size-8xl'),
-        },
-        fontWeight: {
-          light: () => getToken('--font-weight-light'),
-          normal: () => getToken('--font-weight-normal'),
-          medium: () => getToken('--font-weight-medium'),
-          semibold: () => getToken('--font-weight-semibold'),
-          bold: () => getToken('--font-weight-bold'),
-          black: () => getToken('--font-weight-black'),
-        },
-      },
-      // Spacing
-      spacing: {
-        _0: () => getToken('--space-0'),
-        _1: () => getToken('--space-1'),
-        _2: () => getToken('--space-2'),
-        _3: () => getToken('--space-3'),
-        _4: () => getToken('--space-4'),
-        _5: () => getToken('--space-5'),
-        _6: () => getToken('--space-6'),
-        _8: () => getToken('--space-8'),
-        _10: () => getToken('--space-10'),
-        _12: () => getToken('--space-12'),
-        _16: () => getToken('--space-16'),
-        _20: () => getToken('--space-20'),
-        _24: () => getToken('--space-24'),
-      },
-      // Border radius
-      radius: {
-        none: () => getToken('--radius-none'),
-        sm: () => getToken('--radius-sm'),
-        md: () => getToken('--radius-md'),
-        base: () => getToken('--radius-base'),
-        lg: () => getToken('--radius-lg'),
-        xl: () => getToken('--radius-xl'),
-        '2xl': () => getToken('--radius-2xl'),
-        full: () => getToken('--radius-full'),
-      },
-      // Shadows
-      shadow: {
-        none: () => getToken('--shadow-none'),
-        sm: () => getToken('--shadow-sm'),
-        md: () => getToken('--shadow-md'),
-        lg: () => getToken('--shadow-lg'),
-        xl: () => getToken('--shadow-xl'),
-        primary: () => getToken('--shadow-primary'),
-      },
-      // Transitions
-      transition: {
-        fast: () => getToken('--transition-fast'),
-        base: () => getToken('--transition-base'),
-        slow: () => getToken('--transition-slow'),
-        slower: () => getToken('--transition-slower'),
-      },
     },
   }
 }
-

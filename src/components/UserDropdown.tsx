@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { useTheme } from '../hooks/useTheme'
 import AccountSettingsModal from './AccountSettingsModal'
@@ -9,7 +10,8 @@ interface UserDropdownProps {
 }
 
 const UserDropdown = ({ sidebarOpen }: UserDropdownProps) => {
-  const { userProfile } = useAuthStore()
+  const { userProfile, signOut } = useAuthStore()
+  const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -43,6 +45,23 @@ const UserDropdown = ({ sidebarOpen }: UserDropdownProps) => {
     toggleTheme()
     setIsOpen(false)
   }
+
+  const handleSignOut = async () => {
+    setIsOpen(false)
+    await signOut()
+    navigate('/', { replace: true })
+  }
+
+  const menuItemStyle = {
+    padding: 'var(--space-3) var(--space-4)',
+    cursor: 'pointer',
+    fontSize: 'var(--font-size-sm)',
+    color: 'var(--color-text-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-2)',
+    transition: 'var(--transition-base)',
+  } as const
 
   if (!sidebarOpen) {
     return (
@@ -105,16 +124,7 @@ const UserDropdown = ({ sidebarOpen }: UserDropdownProps) => {
             </div>
             <div
               onClick={handleToggleTheme}
-              style={{
-                padding: 'var(--space-3) var(--space-4)',
-                cursor: 'pointer',
-                fontSize: 'var(--font-size-sm)',
-                color: 'var(--color-text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                transition: 'var(--transition-base)'
-              }}
+              style={{ ...menuItemStyle, borderBottom: '1px solid var(--color-border-default)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--color-bg-tertiary)'
               }}
@@ -124,6 +134,19 @@ const UserDropdown = ({ sidebarOpen }: UserDropdownProps) => {
             >
               <i className={`bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}`} />
               <span>Toggle Theme ({theme === 'dark' ? 'Light' : 'Dark'})</span>
+            </div>
+            <div
+              onClick={handleSignOut}
+              style={menuItemStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--color-bg-tertiary)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <i className="bi bi-box-arrow-right" />
+              <span>Sign out</span>
             </div>
           </div>
         )}
@@ -209,16 +232,7 @@ const UserDropdown = ({ sidebarOpen }: UserDropdownProps) => {
           </div>
           <div
             onClick={handleToggleTheme}
-            style={{
-              padding: 'var(--space-3) var(--space-4)',
-              cursor: 'pointer',
-              fontSize: 'var(--font-size-sm)',
-              color: 'var(--color-text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              transition: 'var(--transition-base)'
-            }}
+            style={{ ...menuItemStyle, borderBottom: '1px solid var(--color-border-default)' }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--color-bg-tertiary)'
             }}
@@ -228,6 +242,19 @@ const UserDropdown = ({ sidebarOpen }: UserDropdownProps) => {
           >
             <i className={`bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}`} />
             <span>Toggle Theme ({theme === 'dark' ? 'Light' : 'Dark'})</span>
+          </div>
+          <div
+            onClick={handleSignOut}
+            style={menuItemStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--color-bg-tertiary)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            <i className="bi bi-box-arrow-right" />
+            <span>Sign out</span>
           </div>
         </div>
       )}

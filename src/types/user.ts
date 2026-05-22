@@ -14,6 +14,7 @@ export interface UserProfile {
   must_change_password?: boolean
   created_by?: string | null
   active?: boolean
+  theme_preference?: 'dark' | 'light' | 'system' | null
   created_at: string
   updated_at: string
   // Role is stored separately in user_roles table

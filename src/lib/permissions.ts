@@ -1,4 +1,7 @@
 import type { UserRole } from '../types/user'
+import { canAccessMarkStudio } from './studio-roles'
+
+export { canAccessMarkStudio, MARK_STUDIO_ROLES, STUDENT_PORTAL_ROLES } from './studio-roles'
 
 /**
  * Check if the current user has admin role
@@ -72,7 +75,7 @@ export function canManageSong(
  * Check if user can access teacher resources
  */
 export function canAccessTeacher(userRole: UserRole | null | undefined): boolean {
-  return isAdmin(userRole) || isTeacher(userRole)
+  return canAccessMarkStudio(userRole)
 }
 
 /**
@@ -118,13 +121,12 @@ export function canManageStudent(
 export function getDefaultPathForRole(userRole: UserRole | null | undefined): string {
   switch (userRole) {
     case 'admin':
-      return '/admin/dashboard'
-    case 'employee':
-      return '/admin/songs' // Play Studio
     case 'teacher':
-      return '/teacher/library'
+    case 'author':
+    case 'employee':
+      return '/studio/dashboard'
     case 'student':
-      return '/student/library'
+      return '/student/home'
     default:
       return '/login'
   }

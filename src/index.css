@@ -197,6 +197,51 @@ body {
     }
 }
 
+/* Full-page / embedded auth progress (auto sign-in, session restore) */
+.auth-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 100vh;
+    padding: 2rem;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.auth-progress--embedded {
+    min-height: 220px;
+    padding: 2.5rem 1.5rem;
+    background: transparent;
+}
+
+.auth-progress__spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid var(--color-border-default);
+    border-top-color: var(--color-brand-primary);
+    border-radius: 50%;
+    animation: btn-spin 0.75s linear infinite;
+}
+
+.auth-progress__message {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.auth-progress__subtitle {
+    margin: 0;
+    max-width: 280px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+}
+
 h1, h2 {
     font-family: var(--button-font);
     font-weight: 900;
@@ -1866,5 +1911,59 @@ select.contact-input-secondary:focus {
     .responsive-flex > * {
         flex: 1 1 100% !important;
         min-width: 100% !important;
+    }
+}
+
+/* Home page — back to top */
+.home-back-to-top {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 900;
+    width: 2.75rem;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 184, 0, 0.35);
+    border-radius: 50%;
+    background: rgba(26, 10, 60, 0.92);
+    color: var(--color-brand-primary);
+    font-size: 1.35rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition:
+        opacity 0.25s ease,
+        visibility 0.25s ease,
+        transform 0.25s ease,
+        background 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.home-back-to-top--visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.home-back-to-top:hover {
+    background: var(--color-brand-secondary);
+    border-color: var(--color-brand-primary);
+    color: var(--color-brand-primary);
+    box-shadow: 0 6px 24px rgba(255, 184, 0, 0.2);
+}
+
+.home-back-to-top:focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-back-to-top {
+        transition: opacity 0.15s ease, visibility 0.15s ease;
     }
 }

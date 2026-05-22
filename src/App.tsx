@@ -1,35 +1,36 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useAuthStore } from './store/auth'
 import { supabase } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
+import LegacyPlatformRedirect from './components/LegacyPlatformRedirect'
+import ThemeProvider from './components/ThemeProvider'
+import { MARK_STUDIO_ROLES } from './lib/studio-roles'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import ChangePassword from './pages/ChangePassword'
 import ResetPassword from './pages/ResetPassword'
-import Admin from './pages/Admin'
-import DesignSystem from './pages/DesignSystem'
-import AdminDashboard from './pages/admin/Dashboard'
-import AdminUsers from './pages/admin/Users'
-import AdminTeachers from './pages/admin/Teachers'
-import AdminStudents from './pages/admin/Students'
-import AdminCourses from './pages/admin/Courses'
-import AdminSongs from './pages/admin/Songs'
-import SongCreator from './pages/admin/SongCreator'
-import SongAuthor from './pages/admin/SongAuthor'
-// Teacher pages
-import TeacherLibrary from './pages/teacher/Library'
-import TeacherStudents from './pages/teacher/Students'
-import TeacherAssignments from './pages/teacher/Assignments'
-import CourseEditor from './pages/teacher/CourseEditor'
-// Student pages
-import StudentLibrary from './pages/student/Library'
-import StudentAssignments from './pages/student/Assignments'
-import CourseView from './pages/student/CourseView'
-// Section pages
-import Learn from './pages/Learn'
-import Play from './pages/Play'
+// Mark's studio (teacher + admin)
+import MarkDashboard from './pages/studio/mark/Dashboard'
+import MarkStudents from './pages/studio/mark/Students'
+import MarkStudentDetail from './pages/studio/mark/StudentDetail'
+import MarkSchedule from './pages/studio/mark/Schedule'
+import MarkMessages from './pages/studio/mark/Messages'
+import MarkLessonNotes from './pages/studio/mark/LessonNotes'
+import MarkLessonPlanning from './pages/studio/mark/LessonPlanning'
+import LessonBuilder, { LegacyLessonBuilderRedirect } from './pages/studio/mark/LessonBuilder'
+import AssignedLessonEdit from './pages/studio/mark/AssignedLessonEdit'
+import LessonSession from './pages/studio/mark/LessonSession'
+// Student studio portal
+import StudentHome from './pages/studio/student/Home'
+import StudentLessons from './pages/studio/student/StudentLessons'
+import StudentLessonDetail from './pages/studio/student/StudentLessonDetail'
+import StudentPractice from './pages/studio/student/Practice'
+import StudentMessages from './pages/studio/student/Messages'
+import StudentSchedule from './pages/studio/student/Schedule'
+import StudentProgress from './pages/studio/student/Progress'
+import StudioAppEntry from './pages/StudioAppEntry'
 
 const queryClient = new QueryClient()
 
@@ -39,31 +40,24 @@ function AppContent() {
 
   useEffect(() => {
     checkAuth()
-    
-    // Check for stored redirect path from 404.html
+
     const redirectPath = sessionStorage.getItem('redirectPath')
     if (redirectPath) {
       sessionStorage.removeItem('redirectPath')
       navigate(redirectPath)
     }
 
-    // Set up auth state change listener for automatic session refresh
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Don't interfere with manual signIn - let the signIn function handle it
         if (event === 'SIGNED_IN' && session) {
-          // Only update expiration if not already set (to avoid race conditions)
           const existingExpiration = localStorage.getItem('session_expiration')
           if (!existingExpiration) {
             const expirationTime = Date.now() + (30 * 24 * 60 * 60 * 1000)
             localStorage.setItem('session_expiration', expirationTime.toString())
           }
-          // Don't call checkAuth here - signIn already does this
         } else if (event === 'SIGNED_OUT') {
-          // Clear expiration on sign out
           localStorage.removeItem('session_expiration')
         } else if (event === 'TOKEN_REFRESHED' && session) {
-          // Update expiration timestamp on token refresh
           const expirationTime = Date.now() + (30 * 24 * 60 * 60 * 1000)
           localStorage.setItem('session_expiration', expirationTime.toString())
         }
@@ -82,184 +76,178 @@ function AppContent() {
       <Route path="/landingpage" element={<Home />} />
       <Route path="/landingPage" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/login/student" element={<Navigate to="/login?portal=student" replace />} />
+      <Route path="/login/studio" element={<Navigate to="/login?portal=studio" replace />} />
+      <Route path="/app" element={<StudioAppEntry />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      
-      {/* Protected routes - password change */}
-      <Route 
-        path="/change-password" 
+
+      <Route
+        path="/change-password"
         element={
           <ProtectedRoute requirePasswordChange>
             <ChangePassword />
           </ProtectedRoute>
-        } 
+        }
       />
-      
-      {/* Admin routes */}
-      <Route 
-        path="/admin/dashboard" 
+
+      {/* Legacy Play It Pro routes — redirect to Mark's studio or student portal */}
+      <Route path="/admin" element={<LegacyPlatformRedirect />} />
+      <Route path="/admin/*" element={<LegacyPlatformRedirect />} />
+      <Route path="/learn" element={<LegacyPlatformRedirect />} />
+      <Route path="/learn/*" element={<LegacyPlatformRedirect />} />
+      <Route path="/play" element={<LegacyPlatformRedirect />} />
+      <Route path="/play/*" element={<LegacyPlatformRedirect />} />
+      <Route path="/teacher/*" element={<LegacyPlatformRedirect />} />
+
+      {/* Mark's studio — teacher & admin */}
+      <Route
+        path="/studio/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminDashboard />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkDashboard />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin" 
+      <Route
+        path="/studio/students"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <Admin />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkStudents />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/users" 
+      <Route
+        path="/studio/students/:studentId"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminUsers />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkStudentDetail />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/teachers" 
+      <Route
+        path="/studio/schedule"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminTeachers />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkSchedule />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/students" 
+      <Route
+        path="/studio/messages"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminStudents />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkMessages />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/songs" 
+      <Route
+        path="/studio/lesson-notes"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'employee']}>
-            <AdminSongs />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkLessonNotes />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/songs/create" 
+      <Route
+        path="/studio/lesson-planning"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'employee']}>
-            <SongCreator />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <MarkLessonPlanning />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/songs/author" 
+      <Route
+        path="/studio/lesson-planning/lesson/:templateId"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'employee', 'author']}>
-            <SongAuthor />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <LessonBuilder />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/courses" 
+      <Route
+        path="/studio/lesson-planning/builder/:templateId"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminCourses />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <LegacyLessonBuilderRedirect />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/design-system" 
+      <Route
+        path="/studio/lesson-planning/assigned/:id"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <DesignSystem />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <AssignedLessonEdit />
           </ProtectedRoute>
-        } 
+        }
       />
-      
-      {/* Section routes - Learn and Play */}
-      <Route 
-        path="/learn" 
+      <Route
+        path="/studio/lesson-planning/session/:scheduledId"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'author', 'teacher', 'employee', 'student']}>
-            <Learn />
+          <ProtectedRoute allowedRoles={MARK_STUDIO_ROLES}>
+            <LessonSession />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/play" 
-        element={
-          <ProtectedRoute allowedRoles={['student', 'teacher', 'admin', 'employee', 'author']}>
-            <Play />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/play/:songId" 
-        element={
-          <ProtectedRoute allowedRoles={['student', 'teacher', 'admin', 'employee', 'author']}>
-            <Play />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Teacher routes */}
-      <Route 
-        path="/teacher/library" 
-        element={
-          <ProtectedRoute allowedRoles={['teacher']}>
-            <TeacherLibrary />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/teacher/students" 
-        element={
-          <ProtectedRoute allowedRoles={['teacher']}>
-            <TeacherStudents />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/teacher/assignments" 
-        element={
-          <ProtectedRoute allowedRoles={['teacher']}>
-            <TeacherAssignments />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/teacher/courses/:courseId" 
-        element={
-          <ProtectedRoute allowedRoles={['teacher']}>
-            <CourseEditor />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Student routes */}
-      <Route 
-        path="/student/library" 
+
+      {/* Student studio portal */}
+      <Route path="/student/library" element={<Navigate to="/student/home" replace />} />
+      <Route path="/student/assignments" element={<Navigate to="/student/practice" replace />} />
+      <Route path="/student/courses/:courseId" element={<Navigate to="/student/home" replace />} />
+      <Route
+        path="/student/home"
         element={
           <ProtectedRoute allowedRoles={['student']}>
-            <StudentLibrary />
+            <StudentHome />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/student/assignments" 
+      <Route
+        path="/student/lessons"
         element={
           <ProtectedRoute allowedRoles={['student']}>
-            <StudentAssignments />
+            <StudentLessons />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/student/courses/:courseId" 
+      <Route
+        path="/student/lessons/:id"
         element={
           <ProtectedRoute allowedRoles={['student']}>
-            <CourseView />
+            <StudentLessonDetail />
           </ProtectedRoute>
-        } 
+        }
+      />
+      <Route
+        path="/student/practice"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentPractice />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/messages"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentMessages />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/schedule"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentSchedule />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/progress"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentProgress />
+          </ProtectedRoute>
+        }
       />
     </Routes>
   )
@@ -268,9 +256,11 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <AppContent />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

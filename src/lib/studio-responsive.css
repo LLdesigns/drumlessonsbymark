@@ -23,6 +23,31 @@
     gap: 1rem;
   }
 
+  .studio-student-profile__lessons-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .studio-student-profile__lessons-head .studio-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .studio-student-lesson-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .studio-student-lesson-item__actions {
+    width: 100%;
+  }
+
+  .studio-student-lesson-item__actions .studio-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
   .studio-schedule-create .studio-grid-2 {
     grid-template-columns: 1fr;
   }
@@ -98,6 +123,144 @@
   .studio-content {
     padding: 1rem;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Student profile — lesson plans first */
+.studio-student-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.studio-student-profile__section-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.studio-student-profile__lessons-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.studio-student-lesson-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.studio-student-lesson-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--studio-bg);
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+}
+
+.studio-student-lesson-item__title {
+  margin: 0 0 0.15rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.studio-student-lesson-item__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.studio-student-lesson-empty {
+  text-align: center;
+  padding: 1.25rem 0.5rem;
+  color: var(--studio-text-muted);
+}
+
+.studio-student-lesson-empty p {
+  margin: 0 0 0.75rem;
+}
+
+.studio-student-profile__session-hint {
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--studio-border);
+  font-size: 0.85rem;
+  color: var(--studio-text-muted);
+}
+
+.studio-student-profile__session-hint a {
+  color: var(--studio-accent);
+  font-weight: 600;
+}
+
+.studio-student-profile__accordion summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+
+.studio-student-profile__accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.studio-student-profile__accordion-body {
+  margin-top: 1rem;
+}
+
+.studio-form-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.studio-student-mini-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  font-size: 0.88rem;
+  color: var(--studio-text-muted);
+}
+
+.studio-student-mini-list li {
+  margin-bottom: 0.35rem;
+}
+
+.studio-student-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+@media (min-width: 900px) {
+  .studio-student-profile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.25rem;
+  }
+
+  .studio-student-profile__lessons {
+    grid-column: 1 / -1;
+  }
+
+  .studio-student-profile__accordion {
+    grid-column: 1;
+  }
+
+  .studio-student-detail-grid {
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 

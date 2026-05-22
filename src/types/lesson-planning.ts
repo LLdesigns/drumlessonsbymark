@@ -11,6 +11,9 @@ export type AssignedLessonStatus =
   | 'completed'
   | 'archived'
 
+/** Who created the student's copy of a library lesson */
+export type LessonEnrollmentSource = 'teacher' | 'student'
+
 export type LessonBlockType =
   | 'text'
   | 'notation_image'
@@ -149,6 +152,7 @@ export interface AssignedLesson {
   assigned_at: string
   due_date?: string | null
   status: AssignedLessonStatus
+  enrollment_source?: LessonEnrollmentSource
   completed_at?: string | null
   created_at: string
   updated_at: string

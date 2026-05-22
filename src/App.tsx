@@ -25,7 +25,6 @@ import LessonSession from './pages/studio/mark/LessonSession'
 import StudentHome from './pages/studio/student/Home'
 import StudentLessons from './pages/studio/student/StudentLessons'
 import StudentLessonDetail from './pages/studio/student/StudentLessonDetail'
-import StudentPractice from './pages/studio/student/Practice'
 import StudentMessages from './pages/studio/student/Messages'
 import StudentSchedule from './pages/studio/student/Schedule'
 import StudentProgress from './pages/studio/student/Progress'
@@ -183,7 +182,8 @@ function AppContent() {
 
       {/* Student studio portal */}
       <Route path="/student/library" element={<Navigate to="/student/home" replace />} />
-      <Route path="/student/assignments" element={<Navigate to="/student/practice" replace />} />
+      <Route path="/student/assignments" element={<Navigate to="/student/lessons" replace />} />
+      <Route path="/student/practice" element={<Navigate to="/student/lessons" replace />} />
       <Route path="/student/courses/:courseId" element={<Navigate to="/student/home" replace />} />
       <Route
         path="/student/home"
@@ -206,14 +206,6 @@ function AppContent() {
         element={
           <ProtectedRoute allowedRoles={['student']}>
             <StudentLessonDetail />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/student/practice"
-        element={
-          <ProtectedRoute allowedRoles={['student']}>
-            <StudentPractice />
           </ProtectedRoute>
         }
       />

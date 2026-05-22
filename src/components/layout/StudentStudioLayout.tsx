@@ -6,7 +6,6 @@ import { roleDisplayLabel } from '../../lib/studio-service'
 const studentNav: StudioNavItem[] = [
   { path: '/student/home', label: 'Home', icon: 'bi-house' },
   { path: '/student/lessons', label: 'Lessons', icon: 'bi-journal-richtext' },
-  { path: '/student/practice', label: 'Practice', icon: 'bi-music-note-beamed' },
   { path: '/student/messages', label: 'Messages', icon: 'bi-chat-dots' },
   { path: '/student/schedule', label: 'Schedule', icon: 'bi-calendar-week' },
   { path: '/student/progress', label: 'Progress', icon: 'bi-graph-up-arrow' },

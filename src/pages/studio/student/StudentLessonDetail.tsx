@@ -9,6 +9,7 @@ import {
   fetchAssignedLesson,
   addStudentPracticeNote,
   fetchTaskCompletions,
+  markAssignedLessonComplete,
   toggleTaskCompletion,
   updateAssignedLesson,
 } from '../../../lib/lesson-planning-service'
@@ -31,6 +32,7 @@ export default function StudentLessonDetail() {
   const [completions, setCompletions] = useState<PracticeTaskCompletion[]>([])
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [completing, setCompleting] = useState(false)
 
   const reload = async () => {
     if (!id || !user?.id) return
@@ -193,6 +195,29 @@ export default function StudentLessonDetail() {
             authorRole="student"
             teacherId={lesson.teacher_id}
           />
+        ) : null}
+
+        {lesson.status !== 'completed' ? (
+          <article className="lp-practice-block">
+            <p className="lp-practice-block__label">Done with this lesson?</p>
+            <button
+              type="button"
+              className="lp-btn lp-btn--primary"
+              disabled={completing}
+              onClick={async () => {
+                if (!id) return
+                setCompleting(true)
+                try {
+                  await markAssignedLessonComplete(id)
+                  await reload()
+                } finally {
+                  setCompleting(false)
+                }
+              }}
+            >
+              {completing ? 'Saving…' : 'Mark lesson complete'}
+            </button>
+          </article>
         ) : null}
 
         <article className="lp-practice-block">

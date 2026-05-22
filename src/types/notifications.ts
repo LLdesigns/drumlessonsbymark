@@ -7,6 +7,7 @@ export type NotificationType =
   | 'practice_upload'
   | 'lesson_note_added'
   | 'lesson_assigned'
+  | 'lesson_started'
   | 'session_note_added'
   | 'practice_task_completed'
   | 'practice_note_added'

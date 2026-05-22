@@ -92,6 +92,22 @@ export async function notifyGeneric(
   await dispatchNotification({ recipientId, type, title, body, actionUrl })
 }
 
+export async function notifyStudentStartedLesson(
+  teacherId: string,
+  studentName: string,
+  lessonTitle: string,
+  assignedLessonId: string
+) {
+  await dispatchNotification({
+    recipientId: teacherId,
+    type: 'lesson_started',
+    title: 'Student started a lesson',
+    body: `${studentName} began working on "${lessonTitle}".`,
+    actionUrl: `/studio/students`,
+    metadata: { assigned_lesson_id: assignedLessonId, lesson_title: lessonTitle },
+  })
+}
+
 export async function notifyLessonAssigned(
   studentId: string,
   teacherName: string,

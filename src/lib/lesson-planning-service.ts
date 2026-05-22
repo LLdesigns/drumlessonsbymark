@@ -1,10 +1,12 @@
 import { supabase } from './supabase'
+import { getStudentTeacherId } from './studio-service'
 import type {
   AssignedLesson,
   AssignedLessonBlock,
   AssignedLessonStatus,
   LessonBlockContent,
   LessonBlockType,
+  LessonEnrollmentSource,
   LessonSessionNote,
   LessonTemplate,
   LessonTemplateBlock,
@@ -297,7 +299,11 @@ async function createAssignedLessonFromTemplate(
   teacherId: string,
   studentId: string,
   template: LessonTemplate,
-  customizations?: { custom_student_instructions?: string; due_date?: string | null }
+  customizations?: {
+    custom_student_instructions?: string
+    due_date?: string | null
+    enrollment_source?: LessonEnrollmentSource
+  }
 ): Promise<AssignedLesson> {
   const { data, error } = await supabase
     .from('assigned_lessons')
@@ -317,6 +323,7 @@ async function createAssignedLessonFromTemplate(
       custom_student_instructions: customizations?.custom_student_instructions ?? null,
       due_date: customizations?.due_date ?? null,
       status: 'not_started',
+      enrollment_source: customizations?.enrollment_source ?? 'teacher',
     })
     .select()
     .single()
@@ -336,6 +343,103 @@ async function createAssignedLessonFromTemplate(
   }
 
   return (await fetchAssignedLesson(data.id))!
+}
+
+const STUDENT_TEMPLATE_LIST_COLUMNS =
+  'id, teacher_id, title, short_description, category, skill_level, estimated_duration_minutes, lesson_goal, student_instructions, practice_assignment, status, created_at, updated_at'
+
+export async function fetchTeacherLessonLibraryForStudent(studentId: string): Promise<LessonTemplate[]> {
+  const teacherId = await getStudentTeacherId(studentId)
+  if (!teacherId) return []
+
+  const { data, error } = await supabase
+    .from('lesson_templates')
+    .select(STUDENT_TEMPLATE_LIST_COLUMNS)
+    .eq('teacher_id', teacherId)
+    .eq('status', 'active')
+    .order('title', { ascending: true })
+
+  if (isMissingTableError(error)) return []
+  if (error) throw error
+  return (data ?? []) as LessonTemplate[]
+}
+
+export async function fetchLessonTemplateForStudent(
+  templateId: string,
+  studentId: string
+): Promise<LessonTemplate | null> {
+  const teacherId = await getStudentTeacherId(studentId)
+  if (!teacherId) return null
+
+  const { data, error } = await supabase
+    .from('lesson_templates')
+    .select(`${STUDENT_TEMPLATE_LIST_COLUMNS}, lesson_template_blocks(*)`)
+    .eq('id', templateId)
+    .eq('teacher_id', teacherId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (isMissingTableError(error)) return null
+  if (error) throw error
+  if (!data) return null
+
+  const row = data as LessonTemplate & { lesson_template_blocks?: LessonTemplateBlock[] }
+  const { lesson_template_blocks, ...t } = row
+  return { ...(t as LessonTemplate), blocks: sortByOrder(lesson_template_blocks ?? []) }
+}
+
+export function findActiveAssignedLessonForTemplate(
+  lessons: AssignedLesson[],
+  templateId: string
+): AssignedLesson | null {
+  return (
+    lessons.find(
+      (l) =>
+        l.template_id === templateId && l.status !== 'archived' && l.status !== 'completed'
+    ) ?? null
+  )
+}
+
+/** Student starts a library lesson (creates assigned copy or returns existing active one). */
+export async function studentEnrollInLesson(
+  studentId: string,
+  templateId: string
+): Promise<{ lesson: AssignedLesson; created: boolean }> {
+  const teacherId = await getStudentTeacherId(studentId)
+  if (!teacherId) throw new Error('You are not linked to a teacher yet.')
+
+  const existingLessons = await fetchAssignedLessons(studentId, 'student')
+  const existing = findActiveAssignedLessonForTemplate(existingLessons, templateId)
+  if (existing) {
+    const full = await fetchAssignedLesson(existing.id)
+    return { lesson: full ?? existing, created: false }
+  }
+
+  const template = await fetchLessonTemplateForStudent(templateId, studentId)
+  if (!template) throw new Error('Lesson not found in your library.')
+
+  const lesson = await createAssignedLessonFromTemplate(teacherId, studentId, template, {
+    enrollment_source: 'student',
+  })
+  return { lesson, created: true }
+}
+
+export async function fetchTaskCompletionsForStudent(
+  teacherId: string,
+  studentId: string
+): Promise<PracticeTaskCompletion[]> {
+  const lessons = await fetchAssignedLessons(teacherId, 'teacher', { studentId })
+  const lessonIds = lessons.map((l) => l.id)
+  if (lessonIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('practice_task_completions')
+    .select('*')
+    .in('assigned_lesson_id', lessonIds)
+
+  if (isMissingTableError(error)) return []
+  if (error) throw error
+  return (data ?? []) as PracticeTaskCompletion[]
 }
 
 export async function updateAssignedLesson(id: string, updates: Partial<AssignedLesson>) {

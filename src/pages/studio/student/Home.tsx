@@ -3,14 +3,19 @@ import { Link } from 'react-router-dom'
 import StudentStudioLayout from '../../../components/layout/StudentStudioLayout'
 import { useAuthStore } from '../../../store/auth'
 import {
-  fetchLessonNotes,
-  fetchPracticeAssignments,
-  fetchStudentMilestones,
+  fetchAssignedLessons,
+  fetchStudentSessionNotes,
+  fetchStudentTaskCompletions,
+} from '../../../lib/lesson-planning-service'
+import {
   fetchStudioMessages,
+  fetchStudentMilestones,
   fetchUpcomingLessons,
   profileFirstName,
 } from '../../../lib/studio-service'
-import type { LessonNote, PracticeAssignment, ScheduledLesson, StudioMessage } from '../../../types/studio'
+import { statusLabel } from '../../../lib/lesson-planning-constants'
+import type { AssignedLesson, LessonSessionNote } from '../../../types/lesson-planning'
+import type { ScheduledLesson, StudioMessage } from '../../../types/studio'
 
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -24,26 +29,31 @@ function relativeTime(iso: string) {
 export default function StudentHome() {
   const { user, userProfile } = useAuthStore()
   const [nextLesson, setNextLesson] = useState<ScheduledLesson | null>(null)
-  const [assignments, setAssignments] = useState<PracticeAssignment[]>([])
-  const [recentNotes, setRecentNotes] = useState<LessonNote[]>([])
+  const [activeLessons, setActiveLessons] = useState<AssignedLesson[]>([])
+  const [sessionNotes, setSessionNotes] = useState<LessonSessionNote[]>([])
   const [messages, setMessages] = useState<StudioMessage[]>([])
-  const [completedCount, setCompletedCount] = useState(0)
+  const [taskCount, setTaskCount] = useState(0)
+  const [completedLessonCount, setCompletedLessonCount] = useState(0)
   const [milestoneCount, setMilestoneCount] = useState(0)
 
   useEffect(() => {
     if (!user?.id) return
     const load = async () => {
-      const [lessons, practice, notes, msgs, milestones] = await Promise.all([
+      const [lessons, scheduled, notes, msgs, milestones, completions] = await Promise.all([
+        fetchAssignedLessons(user.id, 'student'),
         fetchUpcomingLessons(user.id, 'student', 1),
-        fetchPracticeAssignments(user.id, 'student'),
-        fetchLessonNotes(user.id, 'student', 2),
+        fetchStudentSessionNotes(user.id),
         fetchStudioMessages(user.id),
         fetchStudentMilestones(user.id),
+        fetchStudentTaskCompletions(user.id),
       ])
-      setNextLesson(lessons[0] ?? null)
-      setAssignments(practice.filter((a) => a.status === 'active').slice(0, 4))
-      setCompletedCount(practice.filter((a) => a.status === 'completed').length)
-      setRecentNotes(notes)
+      setNextLesson(scheduled[0] ?? null)
+      setActiveLessons(
+        lessons.filter((l) => l.status !== 'completed' && l.status !== 'archived').slice(0, 4)
+      )
+      setCompletedLessonCount(lessons.filter((l) => l.status === 'completed').length)
+      setSessionNotes(notes.filter((n) => n.student_summary || n.homework_assigned).slice(0, 1))
+      setTaskCount(completions.length)
       setMilestoneCount(milestones.length)
       const incoming = msgs.filter((m) => m.recipient_id === user.id)
       setMessages(
@@ -57,19 +67,13 @@ export default function StudentHome() {
 
   const firstName = profileFirstName(userProfile, user?.email)
 
-  const songsLearned = useMemo(() => {
-    const songs = new Set<string>()
-    assignments.forEach((a) => a.songs?.forEach((s) => songs.add(s)))
-    return songs.size
-  }, [assignments])
+  const progressPct = useMemo(() => {
+    const total = activeLessons.length + completedLessonCount
+    if (total === 0) return milestoneCount > 0 ? 40 : 12
+    return Math.round((completedLessonCount / total) * 100) || 15
+  }, [activeLessons.length, completedLessonCount, milestoneCount])
 
-  const progressPct = assignments.length
-    ? Math.round((completedCount / (completedCount + assignments.length)) * 100) || 12
-    : milestoneCount > 0
-      ? 72
-      : 24
-
-  const feedbackQuote = recentNotes[0]?.summary || recentNotes[0]?.practice_focus
+  const feedbackQuote = sessionNotes[0]?.student_summary || sessionNotes[0]?.homework_assigned
 
   const lessonDate = nextLesson
     ? new Date(nextLesson.starts_at).toLocaleDateString(undefined, {
@@ -89,7 +93,7 @@ export default function StudentHome() {
     <StudentStudioLayout>
       <div className="studio-page-intro">
         <h1 className="studio-page-intro__title">Hey {firstName}! 👋</h1>
-        <p className="studio-page-intro__sub">Let&apos;s keep building your groove.</p>
+        <p className="studio-page-intro__sub">Pick a lesson from the library and keep building your groove.</p>
       </div>
 
       <div className="studio-student-hero">
@@ -116,27 +120,32 @@ export default function StudentHome() {
 
       <div className="studio-student-grid">
         <section className="studio-card">
-          <h3 className="studio-card__title">Practice This Week</h3>
-          {assignments.length === 0 ? (
-            <p className="studio-subtext">You&apos;re all caught up — nice work!</p>
+          <h3 className="studio-card__title">Lessons in progress</h3>
+          {activeLessons.length === 0 ? (
+            <>
+              <p className="studio-subtext">Browse Mark&apos;s full lesson library and start one when you&apos;re ready.</p>
+              <Link to="/student/lessons?tab=library" className="studio-btn studio-btn--primary" style={{ marginTop: '0.75rem' }}>
+                Browse all lessons
+              </Link>
+            </>
           ) : (
-            assignments.map((a, i) => (
+            activeLessons.map((a) => (
               <div key={a.id} style={{ marginBottom: '0.85rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Link to="/student/practice" style={{ color: 'var(--studio-text)', fontWeight: 600, textDecoration: 'none' }}>
-                    {a.title}
-                  </Link>
-                  <span className="studio-subtext">{Math.min(i + 3, 5)}/5 days</span>
-                </div>
-                <div className="studio-practice-bar">
-                  <div
-                    className="studio-practice-bar__fill"
-                    style={{ width: `${((i + 3) / 5) * 100}%` }}
-                  />
-                </div>
+                <Link
+                  to={`/student/lessons/${a.id}`}
+                  style={{ color: 'var(--studio-text)', fontWeight: 600, textDecoration: 'none' }}
+                >
+                  {a.title}
+                </Link>
+                <p className="studio-subtext" style={{ marginTop: '0.2rem' }}>
+                  {statusLabel(a.status)}
+                </p>
               </div>
             ))
           )}
+          <Link to="/student/lessons" className="studio-card__link" style={{ marginTop: '0.5rem', display: 'inline-block' }}>
+            All lessons →
+          </Link>
         </section>
 
         <section className="studio-card">
@@ -147,20 +156,16 @@ export default function StudentHome() {
               <cite className="studio-handquote" style={{ marginTop: '0.75rem' }}>
                 — Mark
               </cite>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-                <div className="studio-avatar">M</div>
-                <span className="studio-subtext">Mark Proctor</span>
-              </div>
             </>
           ) : (
-            <p className="studio-journal">Mark will share feedback after your next lesson.</p>
+            <p className="studio-journal">Session notes from Mark will show up here after lessons.</p>
           )}
         </section>
 
         <section className="studio-card">
           <h3 className="studio-card__title">Messages</h3>
           {messages.length === 0 ? (
-            <p className="studio-subtext">No messages from Mark yet.</p>
+            <p className="studio-subtext">Message Mark for lesson recommendations.</p>
           ) : (
             messages.map((m) => (
               <div key={m.id} className="studio-row">
@@ -184,21 +189,18 @@ export default function StudentHome() {
         <section className="studio-card">
           <h3 className="studio-card__title">Your Progress</h3>
           <div className="studio-handquote-row" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
-            <div
-              className="studio-progress-ring"
-              style={{ '--pct': progressPct } as React.CSSProperties}
-            >
+            <div className="studio-progress-ring" style={{ '--pct': progressPct } as React.CSSProperties}>
               <span>{progressPct}%</span>
             </div>
             <dl className="studio-progress-stats">
-              <dt>Songs learned</dt>
-              <dd>{songsLearned}</dd>
-              <dt>Lessons done</dt>
-              <dd>{milestoneCount || completedCount}</dd>
-              <dt>Assignments</dt>
-              <dd>{completedCount} completed</dd>
-              <dt>Active practice</dt>
-              <dd>{assignments.length}</dd>
+              <dt>Lessons completed</dt>
+              <dd>{completedLessonCount}</dd>
+              <dt>Tasks checked off</dt>
+              <dd>{taskCount}</dd>
+              <dt>In progress</dt>
+              <dd>{activeLessons.length}</dd>
+              <dt>Milestones</dt>
+              <dd>{milestoneCount}</dd>
             </dl>
           </div>
           <Link to="/student/progress" className="studio-card__link" style={{ marginTop: '1rem', display: 'inline-block' }}>

@@ -1,23 +1,20 @@
-/*
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
-
-/assets/*
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
-
 /assets/*.js
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
+  Content-Type: text/javascript; charset=utf-8
 
 /assets/*.css
-  Content-Type: text/css
-  Cache-Control: public, max-age=31536000
+  Content-Type: text/css; charset=utf-8
 
-/*.js
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
+/assets/*.woff2
+  Content-Type: font/woff2
 
-/*.css
-  Content-Type: text/css
-  Cache-Control: public, max-age=31536000
+/assets/*.woff
+  Content-Type: font/woff
+
+/*.png
+  Content-Type: image/png
+
+/*.svg
+  Content-Type: image/svg+xml
+
+/*.webmanifest
+  Content-Type: application/manifest+json

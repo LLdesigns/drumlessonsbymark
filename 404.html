@@ -1,30 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drum Lessons by Mark</title>
     <script>
-        // GitHub Pages SPA redirect
-        // Store the original path and redirect to main app
-        var path = window.location.pathname;
-        var search = window.location.search;
-        var hash = window.location.hash;
-        
-        // Store the original path in sessionStorage for the main app to use
-        sessionStorage.setItem('redirectPath', path + search + hash);
-        
-        // Redirect to main app
-        window.location.replace('/');
+      // GitHub Pages serves this file for unknown paths — save route and reload the app shell.
+      sessionStorage.setItem('spa-redirect', location.pathname + location.search + location.hash)
+      location.replace('/')
     </script>
-</head>
-<body>
-    <p>Redirecting...</p>
-    <script>
-        // Fallback redirect
-        setTimeout(function() {
-            window.location.replace('/');
-        }, 1000);
-    </script>
-</body>
+  </head>
+  <body>
+    <p>Loading…</p>
+  </body>
 </html>

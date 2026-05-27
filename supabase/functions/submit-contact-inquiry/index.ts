@@ -180,7 +180,6 @@ Deno.serve(async (req) => {
       message_type: 'contact_form',
       guest_name: guestName,
       guest_email: trimmedEmail,
-      guest_phone: trimmedPhone,
       is_website_inquiry: true,
     })
 
@@ -203,8 +202,13 @@ Deno.serve(async (req) => {
       status: 200,
     })
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : 'Failed to submit contact form'
+    console.error('submit-contact-inquiry error:', error)
+    let message = 'Failed to submit contact form'
+    if (error instanceof Error) {
+      message = error.message
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      message = String((error as { message: unknown }).message)
+    }
     return new Response(JSON.stringify({ success: false, error: message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

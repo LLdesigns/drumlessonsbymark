@@ -54,3 +54,15 @@ AddType application/manifest+json .webmanifest
 fs.writeFileSync(path.join(distDir, '.htaccess'), htaccessContent)
 console.log('Updated .htaccess file')
 console.log('MIME type fixes applied successfully')
+
+// Ensure icon fonts exist at /assets/ (legacy cached CSS + direct requests)
+const publicAssets = path.join(__dirname, '../public/assets')
+const assetsDir = path.join(distDir, 'assets')
+for (const file of ['bootstrap-icons.woff2', 'bootstrap-icons.woff']) {
+  const fromPublic = path.join(publicAssets, file)
+  const toDist = path.join(assetsDir, file)
+  if (fs.existsSync(fromPublic)) {
+    fs.mkdirSync(assetsDir, { recursive: true })
+    fs.copyFileSync(fromPublic, toDist)
+  }
+}

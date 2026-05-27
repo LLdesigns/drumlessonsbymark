@@ -9,6 +9,15 @@ declare const self: ServiceWorkerGlobalScope & {
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
+// Activate new service worker immediately so cached CSS/assets update after deploy
+self.addEventListener('install', () => {
+  void self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 // SPA: serve index.html for client-side routes (refresh on /studio/... etc.)
 const navigationHandler = createHandlerBoundToURL('/index.html')
 registerRoute(

@@ -4,10 +4,10 @@ import { useAuthStore } from '../store/auth'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { TextField, Button, Card } from '../components/ui'
 import AuthProgressScreen from '../components/AuthProgressScreen'
-import { getDefaultPathForRole } from '../lib/permissions'
 import {
   type LoginPortal,
   LOGIN_PORTAL_CONFIG,
+  getPostLoginPath,
   getWrongPortalMessage,
   parseLoginPortal,
   roleMatchesLoginPortal,
@@ -51,9 +51,9 @@ const Login = () => {
   useEffect(() => {
     if (!authReady || !user || !userRole) return
     if (roleMatchesLoginPortal(userRole, portal)) {
-      navigate(getDefaultPathForRole(userRole), { replace: true })
+      navigate(getPostLoginPath(userRole, searchParams.get('redirect')), { replace: true })
     }
-  }, [authReady, user, userRole, portal, navigate])
+  }, [authReady, user, userRole, portal, navigate, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,7 +93,7 @@ const Login = () => {
       if (currentMustChange) {
         navigate('/change-password', { replace: true })
       } else {
-        navigate(getDefaultPathForRole(currentRole), { replace: true })
+        navigate(getPostLoginPath(currentRole, searchParams.get('redirect')), { replace: true })
       }
     } catch (error: unknown) {
       console.error('Login error:', error)

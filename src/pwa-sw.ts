@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>
@@ -7,6 +8,14 @@ declare const self: ServiceWorkerGlobalScope & {
 
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// SPA: serve index.html for client-side routes (refresh on /studio/... etc.)
+const navigationHandler = createHandlerBoundToURL('/index.html')
+registerRoute(
+  new NavigationRoute(navigationHandler, {
+    denylist: [/\/[^/?]+\.[^/]+$/],
+  })
+)
 
 self.addEventListener('push', (event) => {
   let payload: { title?: string; body?: string; url?: string } = {}

@@ -31,7 +31,8 @@ export default function ProtectedRoute({
   }
 
   if (!user) {
-    return <Navigate to={getLoginPathForPathname(location.pathname)} replace />
+    const returnTo = location.pathname + location.search
+    return <Navigate to={getLoginPathForPathname(location.pathname, returnTo)} replace />
   }
 
   // If password change is required, redirect to change password page

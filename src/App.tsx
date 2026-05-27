@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useAuthStore } from './store/auth'
@@ -34,16 +34,9 @@ const queryClient = new QueryClient()
 
 function AppContent() {
   const { checkAuth } = useAuthStore()
-  const navigate = useNavigate()
 
   useEffect(() => {
     checkAuth()
-
-    const redirectPath = sessionStorage.getItem('redirectPath')
-    if (redirectPath) {
-      sessionStorage.removeItem('redirectPath')
-      navigate(redirectPath)
-    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -65,7 +58,7 @@ function AppContent() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [checkAuth, navigate])
+  }, [checkAuth])
 
   return (
     <Routes>

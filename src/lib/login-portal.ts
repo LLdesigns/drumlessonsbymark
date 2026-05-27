@@ -1,6 +1,6 @@
 import type { UserRole } from '../types/user'
+import { getDefaultPathForRole, isStudent } from './permissions'
 import { canAccessMarkStudio } from './studio-roles'
-import { isStudent } from './permissions'
 
 /** Which sign-in tab the user chose (not the DB role name). */
 export type LoginPortal = 'student' | 'studio'
@@ -43,10 +43,44 @@ export function getLoginPathForRole(userRole: UserRole | null | undefined): stri
 }
 
 /** Pick the right login tab when an unauthenticated user hits a protected route. */
-export function getLoginPathForPathname(pathname: string): string {
-  if (pathname.startsWith('/studio')) return getLoginPathForPortal('studio')
-  if (pathname.startsWith('/student')) return getLoginPathForPortal('student')
-  return '/login'
+export function getLoginPathForPathname(pathname: string, returnPath?: string): string {
+  const portal: LoginPortal = pathname.startsWith('/studio')
+    ? 'studio'
+    : pathname.startsWith('/student')
+      ? 'student'
+      : 'student'
+  let path = getLoginPathForPortal(portal)
+  if (
+    returnPath &&
+    returnPath.startsWith('/') &&
+    !returnPath.startsWith('/login') &&
+    returnPath !== '/'
+  ) {
+    path += `&redirect=${encodeURIComponent(returnPath)}`
+  }
+  return path
+}
+
+/** Where to send the user after login (honours ?redirect= from a protected route). */
+export function getPostLoginPath(
+  userRole: UserRole | null | undefined,
+  redirectParam: string | null
+): string {
+  if (redirectParam) {
+    try {
+      const decoded = decodeURIComponent(redirectParam)
+      if (
+        decoded.startsWith('/') &&
+        !decoded.startsWith('/login') &&
+        decoded !== '/'
+      ) {
+        return decoded
+      }
+    } catch {
+      /* ignore malformed redirect */
+    }
+  }
+  return getDefaultPathForRole(userRole) || '/app'
 }
 
 export function roleMatchesLoginPortal(

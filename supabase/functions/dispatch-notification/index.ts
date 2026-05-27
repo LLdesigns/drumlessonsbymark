@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isWebPushConfigured, sendPushToUser } from '../_shared/web-push.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,10 @@ type NotificationType =
   | 'schedule_changed'
   | 'practice_upload'
   | 'lesson_note_added'
+  | 'lesson_assigned'
+  | 'session_note_added'
+  | 'practice_task_completed'
+  | 'practice_note_added'
 
 interface DispatchBody {
   recipientId: string
@@ -34,6 +39,10 @@ function prefAllows(type: NotificationType, prefs: Record<string, boolean> | nul
     schedule_changed: 'schedule_notifications',
     practice_upload: 'practice_notifications',
     lesson_note_added: 'assignment_notifications',
+    lesson_assigned: 'assignment_notifications',
+    session_note_added: 'message_notifications',
+    practice_task_completed: 'practice_notifications',
+    practice_note_added: 'practice_notifications',
   }
   const key = map[type]
   return key ? prefs[key] !== false : true
@@ -69,7 +78,7 @@ async function sendEmailFallback(
 
   if (!resendKey) {
     console.log('[email fallback]', profile.email, title, body)
-    return true
+    return false
   }
 
   const resp = await fetch('https://api.resend.com/emails', {
@@ -110,7 +119,10 @@ Deno.serve(async (req) => {
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     })
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseUser.auth.getUser()
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
@@ -159,15 +171,17 @@ Deno.serve(async (req) => {
     let pushed = false
     let emailed = false
 
-    if (prefs?.push_enabled !== false) {
-      const { data: subs } = await supabaseAdmin
-        .from('push_subscriptions')
-        .select('endpoint')
-        .eq('user_id', payload.recipientId)
-
-      if (subs?.length) {
-        console.log(`[push] ${subs.length} subscription(s) for ${payload.recipientId} — configure VAPID in edge for delivery`)
-        pushed = false
+    if (prefs?.push_enabled !== false && isWebPushConfigured()) {
+      pushed = await sendPushToUser(supabaseAdmin, payload.recipientId, {
+        title: payload.title,
+        body: payload.body,
+        url: payload.actionUrl ?? '/app',
+      })
+      if (pushed) {
+        await supabaseAdmin
+          .from('notifications')
+          .update({ pushed_at: new Date().toISOString() })
+          .eq('id', notification.id)
       }
     }
 
@@ -188,7 +202,13 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, notificationId: notification.id, pushed, emailed }),
+      JSON.stringify({
+        ok: true,
+        notificationId: notification.id,
+        pushed,
+        emailed,
+        pushConfigured: isWebPushConfigured(),
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (e) {

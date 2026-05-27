@@ -2,6 +2,7 @@
 // Deploy: supabase functions deploy submit-contact-inquiry --no-verify-jwt
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isWebPushConfigured, sendPushToUser } from '../_shared/web-push.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +89,23 @@ async function notifyTeacher(
   if (error) {
     console.error('Notification insert failed:', error)
     return
+  }
+
+  let pushed = false
+  if (prefs?.push_enabled !== false) {
+    pushed = await sendPushToUser(supabaseAdmin, teacherId, {
+      title,
+      body,
+      url: '/studio/messages',
+    })
+    if (pushed && notification?.id) {
+      await supabaseAdmin
+        .from('notifications')
+        .update({ pushed_at: new Date().toISOString() })
+        .eq('id', notification.id)
+    } else if (!isWebPushConfigured()) {
+      console.warn('[submit-contact-inquiry] push skipped — VAPID keys not set on edge function')
+    }
   }
 
   const resendKey = Deno.env.get('RESEND_API_KEY')

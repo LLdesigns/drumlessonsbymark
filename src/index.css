@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;700;900&family=Unbounded:wght@300&display=swap');
-@import 'bootstrap-icons/font/bootstrap-icons.css';
+/* Bootstrap Icons loaded from CDN in index.html (reliable on GitHub Pages) */
 @import './lib/design-tokens.css';
 
 /* Legacy token support - now mapped to design tokens */

@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,17 +30,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Vite inlines VITE_* at build time — Repository secrets: Settings → Secrets → Actions
-      - name: Verify Supabase secrets are non-empty
+      - name: Verify Supabase secrets
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::error::VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is empty. Add both under Repository secrets (Actions)."
+            echo "::error::VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is empty."
             exit 1
           fi
-          echo "Supabase env vars are set for this build."
 
       - name: Build
         env:
@@ -49,15 +47,29 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
         run: npm run build
 
-      - name: Ensure .nojekyll file exists
+      - name: Ensure .nojekyll
         run: touch dist/.nojekyll
 
-      # Publishes full dist/ (JS, CSS, fonts, images) to gh-pages branch.
-      # In repo Settings → Pages, set Source to: Deploy from branch → gh-pages → / (root)
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      # Backup: gh-pages branch (if Pages source = branch gh-pages)
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
-          force_orphan: false
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

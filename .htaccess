@@ -1,0 +1,10 @@
+# Disable Jekyll processing on GitHub Pages
+# Correct MIME types when served via Apache-compatible hosts
+
+AddType text/javascript .js
+AddType text/css .css
+AddType font/woff2 .woff2
+AddType font/woff .woff
+AddType image/png .png
+AddType image/svg+xml .svg
+AddType application/manifest+json .webmanifest

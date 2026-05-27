@@ -1,69 +1,56 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const distDir = path.join(__dirname, '../dist')
 
-// Ensure .nojekyll file exists
-const nojekyllPath = path.join(__dirname, '../dist/.nojekyll');
+// Ensure .nojekyll file exists (disable Jekyll on GitHub Pages)
+const nojekyllPath = path.join(distDir, '.nojekyll')
 if (!fs.existsSync(nojekyllPath)) {
-  fs.writeFileSync(nojekyllPath, '');
-  console.log('Created .nojekyll file');
+  fs.writeFileSync(nojekyllPath, '')
+  console.log('Created .nojekyll file')
 }
 
-// Create a more comprehensive _headers file
-const headersContent = `/*
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
-
-/assets/*
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
-
-/assets/*.js
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
+// Netlify/Cloudflare-style headers (ignored on GitHub Pages but harmless)
+const headersContent = `/assets/*.js
+  Content-Type: text/javascript; charset=utf-8
 
 /assets/*.css
-  Content-Type: text/css
-  Cache-Control: public, max-age=31536000
+  Content-Type: text/css; charset=utf-8
 
-/*.js
-  Content-Type: text/javascript
-  Cache-Control: public, max-age=31536000
+/assets/*.woff2
+  Content-Type: font/woff2
 
-/*.css
-  Content-Type: text/css
-  Cache-Control: public, max-age=31536000
-`;
+/assets/*.woff
+  Content-Type: font/woff
 
-const headersPath = path.join(__dirname, '../dist/_headers');
-fs.writeFileSync(headersPath, headersContent);
-console.log('Updated _headers file');
+/*.png
+  Content-Type: image/png
 
-// Create .htaccess for Apache servers
-const htaccessContent = `# Set MIME types for JavaScript modules
-<Files "*.js">
-    Header set Content-Type "text/javascript"
-</Files>
+/*.svg
+  Content-Type: image/svg+xml
 
-# Set MIME types for CSS
-<Files "*.css">
-    Header set Content-Type "text/css"
-</Files>
+/*.webmanifest
+  Content-Type: application/manifest+json
+`
 
-# Enable CORS for assets
-<FilesMatch "\.(js|css)$">
-    Header set Access-Control-Allow-Origin "*"
-</FilesMatch>
+fs.writeFileSync(path.join(distDir, '_headers'), headersContent)
+console.log('Updated _headers file')
 
-# Disable Jekyll processing
-# This file tells GitHub Pages to not process files with Jekyll
-`;
+const htaccessContent = `# Disable Jekyll processing on GitHub Pages
+# Correct MIME types when served via Apache-compatible hosts
 
-const htaccessPath = path.join(__dirname, '../dist/.htaccess');
-fs.writeFileSync(htaccessPath, htaccessContent);
-console.log('Updated .htaccess file');
+AddType text/javascript .js
+AddType text/css .css
+AddType font/woff2 .woff2
+AddType font/woff .woff
+AddType image/png .png
+AddType image/svg+xml .svg
+AddType application/manifest+json .webmanifest
+`
 
-console.log('MIME type fixes applied successfully');
+fs.writeFileSync(path.join(distDir, '.htaccess'), htaccessContent)
+console.log('Updated .htaccess file')
+console.log('MIME type fixes applied successfully')

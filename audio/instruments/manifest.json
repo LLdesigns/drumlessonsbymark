@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "bundled": {
+    "name": "Play It Pro Core v1",
+    "license": "CC0 and in-app synth fallbacks",
+    "packs": [
+      "basic_acoustic_drums",
+      "practice_piano_light",
+      "practice_bass",
+      "clean_guitar",
+      "practice_voice",
+      "metronome_click"
+    ]
+  },
+  "expansion": [
+    {
+      "id": "orchestra_pack",
+      "name": "Orchestra Pack",
+      "description": "VSCO 2 CE–style strings, brass, and woodwinds (v2 download)",
+      "url": "/audio/packs/orchestra/manifest.json"
+    },
+    {
+      "id": "rock_band_pack",
+      "name": "Rock Band Pack",
+      "description": "Heavier drums and distorted guitar (v2 download)",
+      "url": "/audio/packs/rock/manifest.json"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "basic_acoustic_drums",
+  "name": "Basic Acoustic Drums",
+  "license": "MIT — teropa/drumkit (see /audio/drums/CREDITS.md)",
+  "type": "drumkit",
+  "baseUrl": "/audio/drums/",
+  "fallback": "synth",
+  "samples": {
+    "kick": { "file": "kick.mp3", "midi": 36, "gain": 1 },
+    "snare": { "file": "snare.mp3", "midi": 38, "gain": 1 },
+    "snare2": { "file": "snare2.mp3", "midi": 38, "gain": 1.05 },
+    "snare3": { "file": "snare3.mp3", "midi": 38, "gain": 0.55 },
+    "closed_hat": { "file": "hatClosed.mp3", "midi": 42, "gain": 0.9 },
+    "open_hat": { "file": "hatOpen.mp3", "midi": 46, "gain": 0.95 },
+    "tom": { "file": "tomHigh.mp3", "midi": 50, "gain": 0.95 },
+    "tom_mid": { "file": "tomMid.mp3", "midi": 47, "gain": 0.95 },
+    "tom_low": { "file": "tomLow.mp3", "midi": 45, "gain": 0.95 },
+    "crash": { "file": "crash.mp3", "midi": 49, "gain": 0.9 },
+    "ride": { "file": "ride.mp3", "midi": 51, "gain": 0.75 }
+  }
+}

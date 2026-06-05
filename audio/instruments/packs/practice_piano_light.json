@@ -1,0 +1,17 @@
+{
+  "id": "practice_piano_light",
+  "name": "Practice Piano Light",
+  "license": "Generated teaching tones — replace with FreePats/VCSL CC0 in /audio/packs/practice_piano_light/",
+  "type": "melodic",
+  "baseUrl": "/audio/packs/practice_piano_light/",
+  "fallback": "synth",
+  "synth": {
+    "waveform": "triangle",
+    "gain": 0.22
+  },
+  "root_notes": [
+    { "note": "C4", "midi": 60, "file": "piano_C4.wav" },
+    { "note": "E4", "midi": 64, "file": "piano_E4.wav" },
+    { "note": "G4", "midi": 67, "file": "piano_G4.wav" }
+  ]
+}

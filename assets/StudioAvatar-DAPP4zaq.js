@@ -1,1 +1,0 @@
-import{q as s}from"./index-CtBehWyp.js";function m({profile:a,size:r="md",fallback:t="?"}){const i=a&&[a.first_name?.[0],a.last_name?.[0]].filter(Boolean).join("")||t;return s.jsx("div",{className:`studio-avatar ${r==="lg"?"studio-avatar--lg":""}`,children:a?.avatar_url?s.jsx("img",{src:a.avatar_url,alt:""}):i})}export{m as S};

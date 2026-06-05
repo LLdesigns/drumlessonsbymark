@@ -1,9 +1,11 @@
 import { supabase } from './supabase'
+import { normalizeLessonBlocks } from './block-type-utils'
 import { getStudentTeacherId } from './studio-service'
 import type {
   AssignedLesson,
   AssignedLessonBlock,
   AssignedLessonStatus,
+  BlockProgressKind,
   LessonBlockContent,
   LessonBlockType,
   LessonEnrollmentSource,
@@ -11,6 +13,8 @@ import type {
   LessonTemplate,
   LessonTemplateBlock,
   PracticeTaskCompletion,
+  StudentActivityEvent,
+  StudentBlockProgress,
   StudentPracticeNote,
   AssignedLessonNote,
   AssignedLessonNoteVisibility,
@@ -33,6 +37,9 @@ export function formatLessonPlanningError(error: unknown): string {
     const e = error as { code?: string; message?: string }
     if (isLessonPlanningSchemaMissing(e)) {
       return 'Lesson planning tables are not set up in Supabase. Run supabase/sql/LESSON_PLANNING_RUN_IN_SUPABASE.sql in the SQL Editor (see file header for prerequisites).'
+    }
+    if (/block_type_check|violates check constraint/i.test(e.message ?? '')) {
+      return 'Lesson block types need a database update (sequencer and notation blocks). Re-run supabase/sql/LESSON_PLANNING_RUN_IN_SUPABASE.sql in Supabase SQL Editor — safe to run again.'
     }
     return e.message ?? 'Something went wrong'
   }
@@ -127,7 +134,7 @@ export async function fetchLessonTemplate(id: string): Promise<LessonTemplate | 
   const { lesson_template_blocks, ...template } = row
   return {
     ...(template as LessonTemplate),
-    blocks: sortByOrder(lesson_template_blocks ?? []),
+    blocks: normalizeLessonBlocks(sortByOrder(lesson_template_blocks ?? [])),
   }
 }
 
@@ -139,7 +146,7 @@ export async function fetchTemplateBlocks(templateId: string): Promise<LessonTem
     .order('sort_order', { ascending: true })
   if (isMissingTableError(error)) return []
   if (error) throw error
-  return (data ?? []) as LessonTemplateBlock[]
+  return normalizeLessonBlocks((data ?? []) as LessonTemplateBlock[])
 }
 
 export async function createLessonTemplate(
@@ -259,7 +266,7 @@ export async function fetchAssignedLesson(id: string): Promise<AssignedLesson | 
   const { assigned_lesson_blocks, ...lesson } = row
   return {
     ...(lesson as AssignedLesson),
-    blocks: sortByOrder(assigned_lesson_blocks ?? []),
+    blocks: normalizeLessonBlocks(sortByOrder(assigned_lesson_blocks ?? [])),
   }
 }
 
@@ -271,7 +278,7 @@ export async function fetchAssignedLessonBlocks(lessonId: string): Promise<Assig
     .order('sort_order', { ascending: true })
   if (isMissingTableError(error)) return []
   if (error) throw error
-  return (data ?? []) as AssignedLessonBlock[]
+  return normalizeLessonBlocks((data ?? []) as AssignedLessonBlock[])
 }
 
 export async function attachTemplateToStudents(
@@ -442,6 +449,54 @@ export async function fetchTaskCompletionsForStudent(
   return (data ?? []) as PracticeTaskCompletion[]
 }
 
+export async function fetchAssignedLessonsWithBlocks(
+  teacherId: string,
+  studentId: string
+): Promise<AssignedLesson[]> {
+  const { data, error } = await supabase
+    .from('assigned_lessons')
+    .select('*, assigned_lesson_blocks(*)')
+    .eq('teacher_id', teacherId)
+    .eq('student_id', studentId)
+    .neq('status', 'archived')
+    .order('assigned_at', { ascending: false })
+
+  if (isMissingTableError(error)) return []
+  if (error) throw error
+
+  return (data ?? []).map((row) => {
+    const { assigned_lesson_blocks, ...lesson } = row as AssignedLesson & {
+      assigned_lesson_blocks?: AssignedLessonBlock[]
+    }
+    return {
+      ...(lesson as AssignedLesson),
+      blocks: normalizeLessonBlocks(sortByOrder(assigned_lesson_blocks ?? [])),
+    }
+  })
+}
+
+export async function fetchTeacherStudentActivity(
+  teacherId: string,
+  studentId: string,
+  limit = 40
+): Promise<StudentActivityEvent[]> {
+  const lessons = await fetchAssignedLessons(teacherId, 'teacher', { studentId })
+  const lessonIds = lessons.map((l) => l.id)
+  if (lessonIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('student_activity_events')
+    .select('*')
+    .eq('student_id', studentId)
+    .in('assigned_lesson_id', lessonIds)
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+
+  if (isMissingTableError(error)) return []
+  if (error) throw error
+  return (data ?? []) as StudentActivityEvent[]
+}
+
 export async function updateAssignedLesson(id: string, updates: Partial<AssignedLesson>) {
   const { blocks, student, template, ...rest } = updates as AssignedLesson
   const { data, error } = await supabase.from('assigned_lessons').update(rest).eq('id', id).select().single()
@@ -579,6 +634,67 @@ export async function toggleTaskCompletion(params: {
     },
     { onConflict: 'assigned_lesson_id,block_id,item_id,student_id' }
   )
+  if (error) throw error
+}
+
+export async function fetchBlockProgress(assignedLessonId: string): Promise<StudentBlockProgress[]> {
+  const { data, error } = await supabase
+    .from('student_block_progress')
+    .select('*')
+    .eq('assigned_lesson_id', assignedLessonId)
+  if (isMissingTableError(error)) return []
+  if (error) throw error
+  return (data ?? []) as StudentBlockProgress[]
+}
+
+export async function upsertBlockProgress(params: {
+  assigned_lesson_id: string
+  block_id: string
+  student_id: string
+  progress_kind: BlockProgressKind
+  payload?: Record<string, unknown>
+}): Promise<StudentBlockProgress | null> {
+  const { data, error } = await supabase
+    .from('student_block_progress')
+    .upsert(
+      {
+        assigned_lesson_id: params.assigned_lesson_id,
+        block_id: params.block_id,
+        student_id: params.student_id,
+        progress_kind: params.progress_kind,
+        payload: params.payload ?? {},
+        completed_at: new Date().toISOString(),
+      },
+      { onConflict: 'assigned_lesson_id,block_id,student_id,progress_kind' }
+    )
+    .select()
+    .single()
+  if (isMissingTableError(error)) return null
+  if (error) throw error
+  return data as StudentBlockProgress
+}
+
+export async function fetchStudentActivityEvents(
+  studentId: string,
+  limit = 50
+): Promise<StudentActivityEvent[]> {
+  const { data, error } = await supabase
+    .from('student_activity_events')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+  if (isMissingTableError(error)) return []
+  if (error) throw error
+  return (data ?? []) as StudentActivityEvent[]
+}
+
+export async function markAssignedLessonNeedsReview(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('assigned_lessons')
+    .update({ status: 'needs_review' })
+    .eq('id', id)
+    .neq('status', 'completed')
   if (error) throw error
 }
 

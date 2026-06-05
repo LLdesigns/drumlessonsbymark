@@ -41,10 +41,14 @@ export interface Teacher {
 
 // Student relationship via teacher_students junction table
 // No separate students table needed - use teacher_students
+export type TeacherStudentStatus = 'active' | 'archived'
+
 export interface TeacherStudentRelation {
   teacher_id: string
   student_id: string
   created_at: string
+  status?: TeacherStudentStatus
+  archived_at?: string | null
 }
 
 // Extended user profile with role-specific data

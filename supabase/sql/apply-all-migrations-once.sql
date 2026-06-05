@@ -1,9 +1,7 @@
--- ONE-TIME: Run in Supabase Dashboard -> SQL Editor on an EMPTY project (or after reset).
--- Creates public.profiles, user_roles, CMS tables, songs, storage policies, etc.
--- If tables already exist, expect errors; use supabase db push for incremental updates instead.
--- Generated: 2026-03-31T12:30:54.4989358-05:00
-
-
+﻿-- ONE-TIME: Run in Supabase Dashboard -> SQL Editor on an EMPTY project (or after reset).
+-- Creates schema from all files in supabase/migrations/ (sorted by filename).
+-- If tables already exist, expect errors on CREATE â€” use supabase db push for incremental updates instead.
+-- Regenerated: 2026-05-29T09:14:48.2861620-05:00
 
 -- ========== 20241201000000_foundation.sql ==========
 
@@ -220,8 +218,6 @@ DROP TRIGGER IF EXISTS profiles_set_updated_at ON public.profiles;
 CREATE TRIGGER profiles_set_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.set_profiles_updated_at();
-
-
 
 -- ========== 20241201000001_domain_and_cms.sql ==========
 
@@ -1180,8 +1176,6 @@ CREATE POLICY "Teachers can update student assignments for their assignments"
   );
 
 
-
-
 -- ========== 20250102000000_add_songs_system.sql ==========
 
 -- Migration: Add Songs System
@@ -1508,8 +1502,6 @@ CREATE TRIGGER update_song_stems_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 
-
-
 -- ========== 20250102000001_setup_song_storage.sql ==========
 
 -- Migration: Setup Song Storage Bucket
@@ -1700,6 +1692,45 @@ CREATE POLICY "Employees can manage own song covers"
   );
 
 
+-- ========== 20250103000000_configure_30day_session.sql ==========
+
+-- Migration: Configure 30-Day Session Cache
+-- Description: This migration documents and sets up configuration for 30-day session persistence
+-- Note: JWT expiration settings must be configured in Supabase Dashboard (not via SQL)
+-- Date: 2025-01-03
+
+-- ============================================
+-- IMPORTANT: JWT Configuration Instructions
+-- ============================================
+-- 
+-- To enable 30-day sessions, you MUST configure JWT settings in Supabase Dashboard:
+-- 
+-- 1. Go to: https://supabase.com/dashboard/project/cfzvnrlmbgtkltbzovte/auth/settings
+-- 2. Navigate to: Authentication â†’ Settings â†’ JWT expiry
+-- 3. Set the following values:
+--    - Access Token JWT expiry: 2592000 (30 days in seconds)
+--    - Refresh Token expiry: 2592000 (30 days in seconds)
+-- 
+-- Alternative: If you want longer refresh tokens:
+--    - Access Token JWT expiry: 3600 (1 hour - shorter for security)
+--    - Refresh Token expiry: 2592000 (30 days - longer for persistence)
+--
+-- The client-side code will automatically refresh access tokens using the refresh token.
+-- 
+-- ============================================
+-- Note: The following is documentation only
+-- ============================================
+-- 
+-- Supabase stores sessions in the auth.sessions table, but JWT expiration
+-- is controlled by the JWT secret and expiration settings configured in
+-- the dashboard, not by database settings.
+--
+-- Client-side session persistence is already handled by:
+-- 1. localStorage storage (configured in src/lib/supabase.ts)
+-- 2. Auto-refresh token mechanism (configured in src/lib/supabase.ts)
+-- 3. Session expiration tracking (in src/store/auth.ts)
+--
+-- This ensures users remain logged in for 30 days without re-authentication.
 
 
 -- ========== 20250120000000_add_stem_metadata.sql ==========
@@ -1725,6 +1756,1002 @@ COMMENT ON COLUMN song_stems.pan IS 'Pan position from -1.0 (left) to 1.0 (right
 COMMENT ON COLUMN song_stems.metadata IS 'Additional metadata as JSON (e.g., effects, EQ settings, etc.)';
 
 
+-- ========== 20250522000000_studio_portal.sql ==========
+
+-- Mark's Drum Studio Portal â€” teaching workspace tables
+
+-- Student teaching notebook (extends profiles for studio-specific fields)
+CREATE TABLE IF NOT EXISTS student_profiles (
+  student_id UUID PRIMARY KEY REFERENCES profiles(user_id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  age INTEGER,
+  skill_level TEXT CHECK (skill_level IN ('beginner', 'intermediate', 'advanced', 'pro')),
+  favorite_music TEXT,
+  goals TEXT,
+  private_notes TEXT,
+  practice_streak INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_profiles_teacher ON student_profiles(teacher_id);
+
+-- Scheduled in-person / virtual lessons
+CREATE TABLE IF NOT EXISTS scheduled_lessons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  starts_at TIMESTAMPTZ NOT NULL,
+  duration_minutes INTEGER DEFAULT 60 NOT NULL,
+  status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled', 'rescheduled')),
+  location TEXT,
+  is_recurring BOOLEAN DEFAULT FALSE NOT NULL,
+  recurrence_rule TEXT,
+  notes TEXT,
+  cancelled_at TIMESTAMPTZ,
+  rescheduled_from_id UUID REFERENCES scheduled_lessons(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_lessons_teacher ON scheduled_lessons(teacher_id, starts_at);
+CREATE INDEX IF NOT EXISTS idx_scheduled_lessons_student ON scheduled_lessons(student_id, starts_at);
+
+-- Shared practice journal entries after lessons
+CREATE TABLE IF NOT EXISTS lesson_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  scheduled_lesson_id UUID REFERENCES scheduled_lessons(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  summary TEXT,
+  practice_focus TEXT,
+  songs TEXT[] DEFAULT '{}',
+  rudiments TEXT[] DEFAULT '{}',
+  resource_links JSONB DEFAULT '[]',
+  visible_to_student BOOLEAN DEFAULT TRUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_notes_student ON lesson_notes(student_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_lesson_notes_teacher ON lesson_notes(teacher_id, created_at DESC);
+
+-- Practice assignments (studio-focused, not tied to courses)
+CREATE TABLE IF NOT EXISTS practice_assignments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  lesson_note_id UUID REFERENCES lesson_notes(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  songs TEXT[] DEFAULT '{}',
+  rudiments TEXT[] DEFAULT '{}',
+  video_url TEXT,
+  due_date TIMESTAMPTZ,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'archived')),
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_practice_assignments_student ON practice_assignments(student_id, status);
+
+-- Direct messaging
+CREATE TABLE IF NOT EXISTS studio_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  sender_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  recipient_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  message_type TEXT DEFAULT 'chat' CHECK (message_type IN ('chat', 'reminder', 'encouragement', 'lesson_note', 'link')),
+  link_url TEXT,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_studio_messages_recipient ON studio_messages(recipient_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_studio_messages_sender ON studio_messages(sender_id, created_at DESC);
+
+-- Lightweight milestones for progress
+CREATE TABLE IF NOT EXISTS student_milestones (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  milestone_type TEXT DEFAULT 'lesson' CHECK (milestone_type IN ('lesson', 'song', 'rudiment', 'streak', 'custom')),
+  achieved_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_milestones_student ON student_milestones(student_id, achieved_at DESC);
+
+-- updated_at triggers
+DROP TRIGGER IF EXISTS update_student_profiles_updated_at ON student_profiles;
+CREATE TRIGGER update_student_profiles_updated_at BEFORE UPDATE ON student_profiles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_scheduled_lessons_updated_at ON scheduled_lessons;
+CREATE TRIGGER update_scheduled_lessons_updated_at BEFORE UPDATE ON scheduled_lessons
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_lesson_notes_updated_at ON lesson_notes;
+CREATE TRIGGER update_lesson_notes_updated_at BEFORE UPDATE ON lesson_notes
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_practice_assignments_updated_at ON practice_assignments;
+CREATE TRIGGER update_practice_assignments_updated_at BEFORE UPDATE ON practice_assignments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS
+ALTER TABLE student_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scheduled_lessons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesson_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE practice_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE studio_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_milestones ENABLE ROW LEVEL SECURITY;
+
+-- student_profiles policies
+CREATE POLICY "Teachers manage own student profiles"
+  ON student_profiles FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view own profile"
+  ON student_profiles FOR SELECT
+  USING (student_id = auth.uid());
+
+CREATE POLICY "Admins manage all student profiles"
+  ON student_profiles FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- scheduled_lessons policies
+CREATE POLICY "Teachers manage own scheduled lessons"
+  ON scheduled_lessons FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view own scheduled lessons"
+  ON scheduled_lessons FOR SELECT
+  USING (student_id = auth.uid());
+
+CREATE POLICY "Admins manage all scheduled lessons"
+  ON scheduled_lessons FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- lesson_notes policies
+CREATE POLICY "Teachers manage own lesson notes"
+  ON lesson_notes FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view published lesson notes"
+  ON lesson_notes FOR SELECT
+  USING (student_id = auth.uid() AND visible_to_student = TRUE);
+
+CREATE POLICY "Admins manage all lesson notes"
+  ON lesson_notes FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- practice_assignments policies
+CREATE POLICY "Teachers manage own practice assignments"
+  ON practice_assignments FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view and update own practice assignments"
+  ON practice_assignments FOR SELECT
+  USING (student_id = auth.uid());
+
+CREATE POLICY "Students complete own practice assignments"
+  ON practice_assignments FOR UPDATE
+  USING (student_id = auth.uid())
+  WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "Admins manage all practice assignments"
+  ON practice_assignments FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- studio_messages policies
+CREATE POLICY "Users send messages"
+  ON studio_messages FOR INSERT
+  WITH CHECK (sender_id = auth.uid());
+
+CREATE POLICY "Users read own messages"
+  ON studio_messages FOR SELECT
+  USING (sender_id = auth.uid() OR recipient_id = auth.uid());
+
+CREATE POLICY "Recipients mark messages read"
+  ON studio_messages FOR UPDATE
+  USING (recipient_id = auth.uid());
+
+CREATE POLICY "Admins read all messages"
+  ON studio_messages FOR SELECT
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- student_milestones policies
+CREATE POLICY "Teachers manage milestones"
+  ON student_milestones FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view own milestones"
+  ON student_milestones FOR SELECT
+  USING (student_id = auth.uid());
+
+CREATE POLICY "Admins manage all milestones"
+  ON student_milestones FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- ========== 20250523000000_profile_theme_preference.sql ==========
+
+-- User appearance preference (synced when logged in)
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS theme_preference TEXT DEFAULT 'dark'
+  CHECK (theme_preference IN ('dark', 'light', 'system'));
+
+COMMENT ON COLUMN public.profiles.theme_preference IS 'UI theme: dark, light, or system (follows OS)';
+
+-- ========== 20250524000000_notifications_pwa.sql ==========
+
+-- Notifications, push subscriptions, and preferences for Mark's Drum Studio Portal
+
+CREATE TYPE notification_type AS ENUM (
+  'message_received',
+  'lesson_reminder',
+  'assignment_added',
+  'assignment_completed',
+  'schedule_changed',
+  'practice_upload',
+  'lesson_note_added'
+);
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+  user_id UUID PRIMARY KEY REFERENCES profiles(user_id) ON DELETE CASCADE,
+  push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  message_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  lesson_reminders BOOLEAN NOT NULL DEFAULT TRUE,
+  assignment_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  schedule_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  practice_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  quiet_hours_start TIME,
+  quiet_hours_end TIME,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  device_label TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, endpoint)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  recipient_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  actor_id UUID REFERENCES profiles(user_id) ON DELETE SET NULL,
+  notification_type notification_type NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  action_url TEXT,
+  metadata JSONB DEFAULT '{}',
+  read_at TIMESTAMPTZ,
+  pushed_at TIMESTAMPTZ,
+  emailed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread
+  ON notifications(recipient_id, created_at DESC)
+  WHERE read_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created
+  ON notifications(recipient_id, created_at DESC);
+
+DROP TRIGGER IF EXISTS update_notification_preferences_updated_at ON notification_preferences;
+CREATE TRIGGER update_notification_preferences_updated_at
+  BEFORE UPDATE ON notification_preferences
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Preferences: own row only
+CREATE POLICY "Users manage own notification preferences"
+  ON notification_preferences FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Admins read all notification preferences"
+  ON notification_preferences FOR SELECT
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- Push subscriptions: own devices
+CREATE POLICY "Users manage own push subscriptions"
+  ON push_subscriptions FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- Notifications: recipient can read/update read_at; system inserts via service role
+CREATE POLICY "Recipients read own notifications"
+  ON notifications FOR SELECT
+  USING (recipient_id = auth.uid());
+
+CREATE POLICY "Recipients mark own notifications read"
+  ON notifications FOR UPDATE
+  USING (recipient_id = auth.uid())
+  WITH CHECK (recipient_id = auth.uid());
+
+CREATE POLICY "Admins read all notifications"
+  ON notifications FOR SELECT
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- Auto-create preferences when profile exists (optional convenience)
+CREATE OR REPLACE FUNCTION ensure_notification_preferences()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO notification_preferences (user_id)
+  VALUES (NEW.user_id)
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_profile_notification_prefs ON profiles;
+CREATE TRIGGER on_profile_notification_prefs
+  AFTER INSERT ON profiles
+  FOR EACH ROW EXECUTE FUNCTION ensure_notification_preferences();
+
+-- ========== 20250525000000_lesson_planning.sql ==========
+
+-- Lesson Planning: templates, assigned lessons, blocks, session notes
+
+-- Extend notification types for lesson planning
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'lesson_assigned';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'session_note_added';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'practice_task_completed';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'practice_note_added';
+
+-- Reusable lesson templates (Lesson Library)
+CREATE TABLE IF NOT EXISTS lesson_templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  short_description TEXT,
+  category TEXT NOT NULL DEFAULT 'Technique',
+  skill_level TEXT NOT NULL DEFAULT 'beginner'
+    CHECK (skill_level IN ('beginner', 'intermediate', 'advanced')),
+  estimated_duration_minutes INTEGER DEFAULT 60,
+  lesson_goal TEXT,
+  teacher_notes TEXT,
+  student_instructions TEXT,
+  practice_assignment TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_templates_teacher ON lesson_templates(teacher_id, status);
+CREATE INDEX IF NOT EXISTS idx_lesson_templates_category ON lesson_templates(teacher_id, category);
+
+-- Modular content blocks on templates
+CREATE TABLE IF NOT EXISTS lesson_template_blocks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  template_id UUID NOT NULL REFERENCES lesson_templates(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  block_type TEXT NOT NULL CHECK (block_type IN (
+    'text', 'notation_image', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
+  )),
+  content JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_template_blocks_template ON lesson_template_blocks(template_id, sort_order);
+
+-- Student-specific assigned lessons (copy of template, customizable)
+CREATE TABLE IF NOT EXISTS assigned_lessons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  template_id UUID REFERENCES lesson_templates(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  short_description TEXT,
+  category TEXT,
+  skill_level TEXT CHECK (skill_level IN ('beginner', 'intermediate', 'advanced')),
+  estimated_duration_minutes INTEGER,
+  lesson_goal TEXT,
+  teacher_notes TEXT,
+  student_instructions TEXT,
+  practice_assignment TEXT,
+  custom_student_instructions TEXT,
+  custom_teacher_notes TEXT,
+  target_bpm INTEGER,
+  current_bpm INTEGER,
+  student_progress_notes TEXT,
+  assigned_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  due_date TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN (
+    'not_started', 'in_progress', 'needs_review', 'completed', 'archived'
+  )),
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_assigned_lessons_student ON assigned_lessons(student_id, status);
+CREATE INDEX IF NOT EXISTS idx_assigned_lessons_teacher ON assigned_lessons(teacher_id, status);
+CREATE INDEX IF NOT EXISTS idx_assigned_lessons_template ON assigned_lessons(template_id);
+
+-- Blocks on assigned lessons (copied from template, editable per student)
+CREATE TABLE IF NOT EXISTS assigned_lesson_blocks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  assigned_lesson_id UUID NOT NULL REFERENCES assigned_lessons(id) ON DELETE CASCADE,
+  source_block_id UUID REFERENCES lesson_template_blocks(id) ON DELETE SET NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  block_type TEXT NOT NULL CHECK (block_type IN (
+    'text', 'notation_image', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
+  )),
+  content JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_assigned_lesson_blocks_lesson ON assigned_lesson_blocks(assigned_lesson_id, sort_order);
+
+-- Session notes from actual lessons
+CREATE TABLE IF NOT EXISTS lesson_session_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  teacher_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  assigned_lesson_id UUID REFERENCES assigned_lessons(id) ON DELETE SET NULL,
+  scheduled_lesson_id UUID REFERENCES scheduled_lessons(id) ON DELETE SET NULL,
+  lesson_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  what_covered TEXT,
+  what_improved TEXT,
+  what_needs_work TEXT,
+  teacher_private_notes TEXT,
+  student_summary TEXT,
+  homework_assigned TEXT,
+  next_lesson_focus TEXT,
+  resource_links JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_session_notes_student ON lesson_session_notes(student_id, lesson_date DESC);
+CREATE INDEX IF NOT EXISTS idx_lesson_session_notes_teacher ON lesson_session_notes(teacher_id, lesson_date DESC);
+
+-- Student checklist task completions
+CREATE TABLE IF NOT EXISTS practice_task_completions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  assigned_lesson_id UUID NOT NULL REFERENCES assigned_lessons(id) ON DELETE CASCADE,
+  block_id UUID NOT NULL REFERENCES assigned_lesson_blocks(id) ON DELETE CASCADE,
+  item_id TEXT NOT NULL,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  completed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  practice_note TEXT,
+  media_url TEXT,
+  UNIQUE (assigned_lesson_id, block_id, item_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_practice_task_completions_lesson ON practice_task_completions(assigned_lesson_id);
+
+-- Student practice notes on assigned lessons
+CREATE TABLE IF NOT EXISTS student_practice_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  assigned_lesson_id UUID NOT NULL REFERENCES assigned_lessons(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  block_id UUID REFERENCES assigned_lesson_blocks(id) ON DELETE SET NULL,
+  body TEXT NOT NULL,
+  media_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_practice_notes_lesson ON student_practice_notes(assigned_lesson_id, created_at DESC);
+
+-- updated_at triggers
+DROP TRIGGER IF EXISTS update_lesson_templates_updated_at ON lesson_templates;
+CREATE TRIGGER update_lesson_templates_updated_at BEFORE UPDATE ON lesson_templates
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_lesson_template_blocks_updated_at ON lesson_template_blocks;
+CREATE TRIGGER update_lesson_template_blocks_updated_at BEFORE UPDATE ON lesson_template_blocks
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_assigned_lessons_updated_at ON assigned_lessons;
+CREATE TRIGGER update_assigned_lessons_updated_at BEFORE UPDATE ON assigned_lessons
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_assigned_lesson_blocks_updated_at ON assigned_lesson_blocks;
+CREATE TRIGGER update_assigned_lesson_blocks_updated_at BEFORE UPDATE ON assigned_lesson_blocks
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_lesson_session_notes_updated_at ON lesson_session_notes;
+CREATE TRIGGER update_lesson_session_notes_updated_at BEFORE UPDATE ON lesson_session_notes
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS
+ALTER TABLE lesson_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesson_template_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assigned_lessons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assigned_lesson_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lesson_session_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE practice_task_completions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_practice_notes ENABLE ROW LEVEL SECURITY;
+
+-- lesson_templates
+CREATE POLICY "Teachers manage own lesson templates"
+  ON lesson_templates FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Admins manage all lesson templates"
+  ON lesson_templates FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- lesson_template_blocks (via template ownership)
+CREATE POLICY "Teachers manage own template blocks"
+  ON lesson_template_blocks FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM lesson_templates t
+    WHERE t.id = template_id AND t.teacher_id = auth.uid()
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM lesson_templates t
+    WHERE t.id = template_id AND t.teacher_id = auth.uid()
+  ));
+
+CREATE POLICY "Admins manage all template blocks"
+  ON lesson_template_blocks FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- assigned_lessons
+CREATE POLICY "Teachers manage own assigned lessons"
+  ON assigned_lessons FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view own assigned lessons"
+  ON assigned_lessons FOR SELECT
+  USING (student_id = auth.uid());
+
+CREATE POLICY "Students update own assigned lesson progress"
+  ON assigned_lessons FOR UPDATE
+  USING (student_id = auth.uid())
+  WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "Admins manage all assigned lessons"
+  ON assigned_lessons FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- assigned_lesson_blocks
+CREATE POLICY "Teachers manage assigned lesson blocks"
+  ON assigned_lesson_blocks FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM assigned_lessons al
+    WHERE al.id = assigned_lesson_id AND al.teacher_id = auth.uid()
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM assigned_lessons al
+    WHERE al.id = assigned_lesson_id AND al.teacher_id = auth.uid()
+  ));
+
+CREATE POLICY "Students view own assigned lesson blocks"
+  ON assigned_lesson_blocks FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM assigned_lessons al
+    WHERE al.id = assigned_lesson_id AND al.student_id = auth.uid()
+  ));
+
+CREATE POLICY "Admins manage all assigned lesson blocks"
+  ON assigned_lesson_blocks FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- lesson_session_notes
+CREATE POLICY "Teachers manage own session notes"
+  ON lesson_session_notes FOR ALL
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+CREATE POLICY "Students view session notes with student summary"
+  ON lesson_session_notes FOR SELECT
+  USING (student_id = auth.uid());
+
+CREATE POLICY "Admins manage all session notes"
+  ON lesson_session_notes FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- practice_task_completions
+CREATE POLICY "Students manage own task completions"
+  ON practice_task_completions FOR ALL
+  USING (student_id = auth.uid())
+  WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "Teachers view student task completions"
+  ON practice_task_completions FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM assigned_lessons al
+    WHERE al.id = assigned_lesson_id AND al.teacher_id = auth.uid()
+  ));
+
+CREATE POLICY "Admins manage all task completions"
+  ON practice_task_completions FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- student_practice_notes
+CREATE POLICY "Students manage own practice notes"
+  ON student_practice_notes FOR ALL
+  USING (student_id = auth.uid())
+  WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "Teachers view student practice notes"
+  ON student_practice_notes FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM assigned_lessons al
+    WHERE al.id = assigned_lesson_id AND al.teacher_id = auth.uid()
+  ));
+
+CREATE POLICY "Admins manage all student practice notes"
+  ON student_practice_notes FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- ========== 20250525000001_studio_media_storage.sql ==========
+
+-- Storage for lesson planning media (notation images, audio, video)
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'studio-media',
+  'studio-media',
+  false,
+  52428800,
+  ARRAY[
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg', 'audio/webm',
+    'video/mp4', 'video/webm', 'video/quicktime',
+    'application/pdf'
+  ]
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Teachers upload to their folder; students upload practice media to their folder
+CREATE POLICY "Teachers upload studio media"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'studio-media'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role IN ('teacher', 'admin', 'author', 'employee')
+    )
+  );
+
+CREATE POLICY "Students upload practice media"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'studio-media'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND EXISTS (
+      SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'student'
+    )
+  );
+
+CREATE POLICY "Users read own studio media"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'studio-media'
+    AND (
+      (storage.foldername(name))[1] = auth.uid()::text
+      OR EXISTS (
+        SELECT 1 FROM teacher_students ts
+        WHERE ts.teacher_id::text = (storage.foldername(name))[1]
+        AND ts.student_id = auth.uid()
+      )
+      OR EXISTS (
+        SELECT 1 FROM teacher_students ts
+        WHERE ts.student_id::text = (storage.foldername(name))[1]
+        AND ts.teacher_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Users update own studio media"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'studio-media' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users delete own studio media"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'studio-media' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ========== 20250526000000_assigned_lesson_notes.sql ==========
+
+-- Per-student assigned lesson notes (private or shared with teacher/student)
+
+CREATE TABLE IF NOT EXISTS assigned_lesson_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  assigned_lesson_id UUID NOT NULL REFERENCES assigned_lessons(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES profiles(user_id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'shared')),
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_assigned_lesson_notes_lesson ON assigned_lesson_notes(assigned_lesson_id, created_at DESC);
+
+DROP TRIGGER IF EXISTS update_assigned_lesson_notes_updated_at ON assigned_lesson_notes;
+CREATE TRIGGER update_assigned_lesson_notes_updated_at BEFORE UPDATE ON assigned_lesson_notes
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE assigned_lesson_notes ENABLE ROW LEVEL SECURITY;
+
+-- Teachers: own studio lessons only; see own notes + student notes marked shared
+CREATE POLICY "Teachers read assigned lesson notes"
+  ON assigned_lesson_notes FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM assigned_lessons al
+      WHERE al.id = assigned_lesson_id AND al.teacher_id = auth.uid()
+    )
+    AND (
+      author_id = auth.uid()
+      OR visibility = 'shared'
+    )
+  );
+
+CREATE POLICY "Teachers insert assigned lesson notes"
+  ON assigned_lesson_notes FOR INSERT
+  WITH CHECK (
+    author_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM assigned_lessons al
+      WHERE al.id = assigned_lesson_id AND al.teacher_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Teachers update own assigned lesson notes"
+  ON assigned_lesson_notes FOR UPDATE
+  USING (author_id = auth.uid())
+  WITH CHECK (author_id = auth.uid());
+
+CREATE POLICY "Teachers delete own assigned lesson notes"
+  ON assigned_lesson_notes FOR DELETE
+  USING (author_id = auth.uid());
+
+-- Students: only their assigned lesson; own notes + teacher notes marked shared
+CREATE POLICY "Students read assigned lesson notes"
+  ON assigned_lesson_notes FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM assigned_lessons al
+      WHERE al.id = assigned_lesson_id AND al.student_id = auth.uid()
+    )
+    AND (
+      author_id = auth.uid()
+      OR (
+        visibility = 'shared'
+        AND author_id = (
+          SELECT teacher_id FROM assigned_lessons al2 WHERE al2.id = assigned_lesson_id
+        )
+      )
+    )
+  );
+
+CREATE POLICY "Students insert assigned lesson notes"
+  ON assigned_lesson_notes FOR INSERT
+  WITH CHECK (
+    author_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM assigned_lessons al
+      WHERE al.id = assigned_lesson_id AND al.student_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Students update own assigned lesson notes"
+  ON assigned_lesson_notes FOR UPDATE
+  USING (author_id = auth.uid())
+  WITH CHECK (author_id = auth.uid());
+
+CREATE POLICY "Students delete own assigned lesson notes"
+  ON assigned_lesson_notes FOR DELETE
+  USING (author_id = auth.uid());
+
+CREATE POLICY "Admins manage all assigned lesson notes"
+  ON assigned_lesson_notes FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- ========== 20250527000000_website_contact_messages.sql ==========
+
+-- Website contact form â†’ Mark's studio_messages (guest inquiries, no auth sender)
+
+ALTER TABLE studio_messages DROP CONSTRAINT IF EXISTS studio_messages_message_type_check;
+ALTER TABLE studio_messages
+  ADD CONSTRAINT studio_messages_message_type_check
+  CHECK (message_type IN ('chat', 'reminder', 'encouragement', 'lesson_note', 'link', 'contact_form'));
+
+ALTER TABLE studio_messages ALTER COLUMN sender_id DROP NOT NULL;
+
+ALTER TABLE studio_messages ADD COLUMN IF NOT EXISTS guest_name TEXT;
+ALTER TABLE studio_messages ADD COLUMN IF NOT EXISTS guest_email TEXT;
+ALTER TABLE studio_messages ADD COLUMN IF NOT EXISTS is_website_inquiry BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE studio_messages DROP CONSTRAINT IF EXISTS studio_messages_inquiry_check;
+ALTER TABLE studio_messages
+  ADD CONSTRAINT studio_messages_inquiry_check
+  CHECK (
+    (is_website_inquiry = FALSE AND sender_id IS NOT NULL)
+    OR (
+      is_website_inquiry = TRUE
+      AND sender_id IS NULL
+      AND guest_name IS NOT NULL
+      AND guest_email IS NOT NULL
+      AND recipient_id IS NOT NULL
+    )
+  );
+
+-- ========== 20250528000000_guest_phone.sql ==========
+
+-- Optional phone on website contact inquiries
+
+ALTER TABLE studio_messages ADD COLUMN IF NOT EXISTS guest_phone TEXT;
+
+-- ========== 20250528000000_student_lesson_self_enroll.sql ==========
+
+-- Students can browse their teacher's active lesson library and self-enroll.
+
+ALTER TABLE assigned_lessons
+  ADD COLUMN IF NOT EXISTS enrollment_source TEXT NOT NULL DEFAULT 'teacher'
+  CHECK (enrollment_source IN ('teacher', 'student'));
+
+COMMENT ON COLUMN assigned_lessons.enrollment_source IS 'teacher = assigned by Mark; student = self-started from library';
+
+-- Prevent duplicate active enrollments for the same template (optional index for lookups)
+CREATE INDEX IF NOT EXISTS idx_assigned_lessons_student_template
+  ON assigned_lessons(student_id, template_id)
+  WHERE template_id IS NOT NULL AND status NOT IN ('archived', 'completed');
+
+-- Students read active templates from their linked teacher
+CREATE POLICY "Students view teacher active lesson templates"
+  ON lesson_templates FOR SELECT
+  USING (
+    status = 'active'
+    AND EXISTS (
+      SELECT 1 FROM teacher_students ts
+      WHERE ts.student_id = auth.uid() AND ts.teacher_id = lesson_templates.teacher_id
+    )
+  );
+
+CREATE POLICY "Students view blocks on teacher active templates"
+  ON lesson_template_blocks FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM lesson_templates t
+      JOIN teacher_students ts ON ts.teacher_id = t.teacher_id AND ts.student_id = auth.uid()
+      WHERE t.id = template_id AND t.status = 'active'
+    )
+  );
+
+-- Students self-enroll (copy template into assigned_lessons)
+CREATE POLICY "Students enroll in teacher lessons"
+  ON assigned_lessons FOR INSERT
+  WITH CHECK (
+    student_id = auth.uid()
+    AND enrollment_source = 'student'
+    AND EXISTS (
+      SELECT 1 FROM teacher_students ts
+      WHERE ts.student_id = auth.uid() AND ts.teacher_id = assigned_lessons.teacher_id
+    )
+    AND (
+      template_id IS NULL
+      OR EXISTS (
+        SELECT 1 FROM lesson_templates t
+        WHERE t.id = template_id
+          AND t.teacher_id = assigned_lessons.teacher_id
+          AND t.status = 'active'
+      )
+    )
+  );
+
+CREATE POLICY "Students insert blocks when self-enrolling"
+  ON assigned_lesson_blocks FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM assigned_lessons al
+      WHERE al.id = assigned_lesson_id
+        AND al.student_id = auth.uid()
+        AND al.enrollment_source = 'student'
+    )
+  );
+
+-- ========== 20250529000000_teacher_students_archive.sql ==========
+
+-- Per-teacher student archive (soft hide from roster; student account unchanged)
+
+ALTER TABLE public.teacher_students
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'archived'));
+
+ALTER TABLE public.teacher_students
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+COMMENT ON COLUMN public.teacher_students.status IS 'active = on teacher roster; archived = hidden from default lists';
+COMMENT ON COLUMN public.teacher_students.archived_at IS 'When the teacher archived this student';
+
+CREATE INDEX IF NOT EXISTS idx_teacher_students_teacher_active
+  ON public.teacher_students(teacher_id)
+  WHERE status = 'active';
+
+DROP POLICY IF EXISTS "Teachers can update own assignments" ON public.teacher_students;
+CREATE POLICY "Teachers can update own assignments"
+  ON public.teacher_students FOR UPDATE
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
+
+-- Self-enroll / library access only for active teacherâ€“student links
+DROP POLICY IF EXISTS "Students view teacher active lesson templates" ON lesson_templates;
+CREATE POLICY "Students view teacher active lesson templates"
+  ON lesson_templates FOR SELECT
+  USING (
+    status = 'active'
+    AND EXISTS (
+      SELECT 1 FROM teacher_students ts
+      WHERE ts.student_id = auth.uid()
+        AND ts.teacher_id = lesson_templates.teacher_id
+        AND ts.status = 'active'
+    )
+  );
+
+DROP POLICY IF EXISTS "Students view blocks on teacher active templates" ON lesson_template_blocks;
+CREATE POLICY "Students view blocks on teacher active templates"
+  ON lesson_template_blocks FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM lesson_templates t
+      JOIN teacher_students ts ON ts.teacher_id = t.teacher_id AND ts.student_id = auth.uid()
+      WHERE t.id = template_id
+        AND t.status = 'active'
+        AND ts.status = 'active'
+    )
+  );
+
+DROP POLICY IF EXISTS "Students enroll in teacher lessons" ON assigned_lessons;
+CREATE POLICY "Students enroll in teacher lessons"
+  ON assigned_lessons FOR INSERT
+  WITH CHECK (
+    student_id = auth.uid()
+    AND enrollment_source = 'student'
+    AND EXISTS (
+      SELECT 1 FROM teacher_students ts
+      WHERE ts.student_id = auth.uid()
+        AND ts.teacher_id = assigned_lessons.teacher_id
+        AND ts.status = 'active'
+    )
+    AND (
+      template_id IS NULL
+      OR EXISTS (
+        SELECT 1 FROM lesson_templates t
+        WHERE t.id = template_id
+          AND t.teacher_id = assigned_lessons.teacher_id
+          AND t.status = 'active'
+      )
+    )
+  );
+
+-- ========== 20251102031124_remote_schema.sql ==========
+
 
 
 -- ========== 20251102040000_fix_user_roles_infinite_recursion.sql ==========
@@ -1738,7 +2765,7 @@ DROP POLICY IF EXISTS "Admins can view all roles" ON user_roles;
 DROP POLICY IF EXISTS "Admins can insert roles" ON user_roles;
 DROP POLICY IF EXISTS "Admins can update roles" ON user_roles;
 
--- Step 2: Replace function body in place (do NOT DROP — other tables' RLS policies depend on is_admin)
+-- Step 2: Replace function body in place (do NOT DROP â€” other tables' RLS policies depend on is_admin)
 -- Step 3: Create the new function with SECURITY DEFINER
 -- This bypasses RLS, preventing infinite recursion when checking admin status
 CREATE OR REPLACE FUNCTION is_admin(check_user_id UUID)
@@ -1776,5 +2803,4 @@ CREATE POLICY "Admins can insert roles"
 CREATE POLICY "Admins can update roles"
   ON user_roles FOR UPDATE
   USING (is_admin(auth.uid()));
-
 

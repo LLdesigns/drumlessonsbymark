@@ -49,6 +49,13 @@
   --color-error-light: rgba(255, 107, 107, 0.1);
   --color-info: #3b82f6;
   --color-info-light: rgba(59, 130, 246, 0.1);
+
+  /* Scrollbars — gold default (teacher / marketing / studio) */
+  --scrollbar-size: 10px;
+  --scrollbar-track: rgba(255, 255, 255, 0.03);
+  --scrollbar-thumb: rgba(255, 184, 0, 0.3);
+  --scrollbar-thumb-hover: rgba(255, 184, 0, 0.48);
+  --scrollbar-color: rgba(255, 184, 0, 0.42) rgba(255, 255, 255, 0.04);
   
   /* Gradient Colors */
   --gradient-primary: linear-gradient(90deg, rgba(10,7,26,0.92) 0%, rgba(10,7,26,0.7) 60%, rgba(10,7,26,0.2) 100%);
@@ -310,6 +317,9 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.12);
+
+  --scrollbar-track: rgba(0, 0, 0, 0.06);
+  --scrollbar-color: rgba(255, 184, 0, 0.55) rgba(0, 0, 0, 0.06);
   --shadow-primary: 0 2px 8px rgba(255, 184, 0, 0.15); /* Primary color shadow */
   
   /* Gradients - Adjusted for light mode */
@@ -363,5 +373,59 @@
     --padding-input-md-x: 1rem;     /* 16px */
     --padding-input-lg-x: 1.25rem;  /* 20px */
   }
+}
+
+/* ============================================
+   THEMED SCROLLBARS (global)
+   ============================================ */
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-color);
+}
+
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-color);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+/* Hide scrollbars where horizontal tab strips should not show a bar */
+.scrollbar-hidden,
+.studio-tabs__nav {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-hidden::-webkit-scrollbar,
+.studio-tabs__nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 

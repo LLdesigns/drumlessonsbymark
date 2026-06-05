@@ -1,0 +1,11 @@
+{
+  "id": "practice_voice",
+  "name": "Practice Voice",
+  "license": "In-app synth placeholder",
+  "type": "melodic",
+  "fallback": "synth",
+  "synth": {
+    "waveform": "sine",
+    "gain": 0.18
+  }
+}

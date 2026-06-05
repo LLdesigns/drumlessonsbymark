@@ -107,4 +107,9 @@ export interface StudentMilestone {
 
 export interface StudioStudent extends UserProfile {
   studio_profile?: StudentProfile | null
+  /** Link to this teacher (archive status is per teacher) */
+  teacher_relation?: {
+    status: 'active' | 'archived'
+    archived_at: string | null
+  } | null
 }

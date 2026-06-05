@@ -131,13 +131,28 @@ export default defineConfig({
 
       output: {
 
-        manualChunks: undefined,
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/react/')
+          ) {
+            return 'vendor-react'
+          }
+          if (id.includes('node_modules/@supabase')) return 'vendor-supabase'
+          if (id.includes('node_modules/@tanstack')) return 'vendor-query'
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/wavesurfer')) {
+            return 'vendor-media'
+          }
+          return 'vendor'
+        },
 
-        assetFileNames: 'assets/[name].[ext]',
+        chunkFileNames: 'assets/[name]-[hash].js',
 
-        chunkFileNames: 'assets/[name].js',
+        entryFileNames: 'assets/[name]-[hash].js',
 
-        entryFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
 
       },
 

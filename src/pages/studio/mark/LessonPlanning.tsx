@@ -1,88 +1,127 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import MarkStudioLayout from '../../../components/layout/MarkStudioLayout'
 import AttachLessonModal from '../../../components/lesson-planning/AttachLessonModal'
 import { LessonMetaBadges } from '../../../components/lesson-planning/LessonBlockRenderer'
 import { useAuthStore } from '../../../store/auth'
-import { LESSON_CATEGORIES } from '../../../lib/lesson-planning-constants'
+import { useLessonTemplates, lessonTemplatesQueryKey } from '../../../hooks/useLessonTemplates'
+import { LESSON_CATEGORIES, skillLevelLabel } from '../../../lib/lesson-planning-constants'
 import LessonPlanningSchemaBanner from '../../../components/lesson-planning/LessonPlanningSchemaBanner'
 import {
   archiveLessonTemplate,
   checkLessonPlanningSchema,
   duplicateLessonTemplate,
-  fetchLessonTemplates,
   formatLessonPlanningError,
 } from '../../../lib/lesson-planning-service'
 import { fetchTeacherStudents } from '../../../lib/studio-service'
-import type { LessonTemplate } from '../../../types/lesson-planning'
-import type { StudioStudent } from '../../../types/studio'
+import type { LessonTemplate, LessonTemplateSkillLevel } from '../../../types/lesson-planning'
 import '../../../lib/lesson-planning.css'
+
+type LibraryViewMode = 'cards' | 'table'
+
+const LIBRARY_VIEW_STORAGE_KEY = 'lp-library-view-v1'
+
+function readLibraryViewMode(): LibraryViewMode {
+  if (typeof localStorage === 'undefined') return 'cards'
+  return localStorage.getItem(LIBRARY_VIEW_STORAGE_KEY) === 'table' ? 'table' : 'cards'
+}
 
 export default function LessonPlanning() {
   const { user, userRole, userProfile } = useAuthStore()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
-  const [templates, setTemplates] = useState<LessonTemplate[]>([])
-  const [students, setStudents] = useState<StudioStudent[]>([])
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [attachTemplate, setAttachTemplate] = useState<LessonTemplate | null>(null)
   const [schemaError, setSchemaError] = useState<string | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [libraryLoading, setLibraryLoading] = useState(true)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<LibraryViewMode>(() => readLibraryViewMode())
 
-  const load = async () => {
-    if (!user?.id) return
-    setLoadError(null)
-    setLibraryLoading(true)
-    try {
-      const schema = await checkLessonPlanningSchema()
-      if (!schema.ok) {
-        setSchemaError(schema.message ?? 'Lesson planning tables are not set up.')
-        setTemplates([])
-        return
-      }
-      setSchemaError(null)
-      const [t, s] = await Promise.all([
-        fetchLessonTemplates(user.id, {
-          status: 'active',
-          search: search || undefined,
-          category: categoryFilter || undefined,
-        }),
-        fetchTeacherStudents(user.id, userRole),
-      ])
-      setTemplates(t)
-      setStudents(s)
-    } catch (err) {
-      setLoadError(formatLessonPlanningError(err))
-      setTemplates([])
-    } finally {
-      setLibraryLoading(false)
-    }
-  }
+  const filters = { search, category: categoryFilter }
+  const {
+    data: templates = [],
+    isLoading: templatesLoading,
+    isFetching: templatesFetching,
+    error: templatesError,
+  } = useLessonTemplates(user?.id, filters)
+
+  const { data: students = [] } = useQuery({
+    queryKey: ['teacher-students', user?.id, userRole],
+    queryFn: () => fetchTeacherStudents(user!.id, userRole),
+    enabled: Boolean(user?.id),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  })
 
   useEffect(() => {
-    load()
-  }, [user?.id, search, categoryFilter])
+    let cancelled = false
+    checkLessonPlanningSchema().then((schema) => {
+      if (cancelled) return
+      if (!schema.ok) {
+        setSchemaError(schema.message ?? 'Lesson planning tables are not set up.')
+      } else {
+        setSchemaError(null)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const loadError = templatesError ? formatLessonPlanningError(templatesError) : null
+  const libraryLoading = templatesLoading || (templatesFetching && templates.length === 0)
+
+  const invalidateTemplates = () => {
+    if (!user?.id) return
+    void queryClient.invalidateQueries({ queryKey: lessonTemplatesQueryKey(user.id, filters) })
+  }
 
   const handleDuplicate = async (id: string) => {
     if (!user?.id) return
     try {
       await duplicateLessonTemplate(user.id, id)
-      load()
+      invalidateTemplates()
     } catch (err) {
-      setLoadError(formatLessonPlanningError(err))
+      setActionError(formatLessonPlanningError(err))
     }
   }
 
   const handleArchive = async (id: string) => {
     try {
       await archiveLessonTemplate(id)
-      load()
+      invalidateTemplates()
     } catch (err) {
-      setLoadError(formatLessonPlanningError(err))
+      setActionError(formatLessonPlanningError(err))
     }
   }
+
+  const handleViewModeChange = (mode: LibraryViewMode) => {
+    setViewMode(mode)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(LIBRARY_VIEW_STORAGE_KEY, mode)
+    }
+  }
+
+  const openTemplate = (id: string) => navigate(`/studio/lesson-planning/lesson/${id}`)
+
+  const renderTemplateActions = (t: LessonTemplate, compact = false) => (
+    <div className={`lp-card__actions${compact ? ' lp-card__actions--inline' : ''}`}>
+      <button type="button" className="lp-btn lp-btn--primary lp-btn--sm" onClick={() => openTemplate(t.id)}>
+        Open
+      </button>
+      <button type="button" className="lp-btn lp-btn--sm" onClick={() => setAttachTemplate(t)}>
+        Assign
+      </button>
+      <button type="button" className="lp-btn lp-btn--ghost lp-btn--sm" onClick={() => handleDuplicate(t.id)}>
+        Duplicate
+      </button>
+      <button type="button" className="lp-btn lp-btn--ghost lp-btn--sm" onClick={() => handleArchive(t.id)}>
+        Archive
+      </button>
+    </div>
+  )
 
   return (
     <MarkStudioLayout>
@@ -101,6 +140,7 @@ export default function LessonPlanning() {
 
         {schemaError ? <LessonPlanningSchemaBanner message={schemaError} /> : null}
         {loadError && !schemaError ? <LessonPlanningSchemaBanner message={loadError} /> : null}
+        {actionError ? <LessonPlanningSchemaBanner message={actionError} /> : null}
 
         <div className="lp-filter-bar">
           <div className="lp-field">
@@ -109,7 +149,11 @@ export default function LessonPlanning() {
           </div>
           <div className="lp-field">
             <label>Category</label>
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+            <select
+              className="studio-select"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
               <option value="">All categories</option>
               {LESSON_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -117,6 +161,29 @@ export default function LessonPlanning() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="lp-field lp-field--view-toggle">
+            <label>View</label>
+            <div className="lp-view-toggle" role="group" aria-label="Library view">
+              <button
+                type="button"
+                className={`lp-view-toggle__btn${viewMode === 'cards' ? ' lp-view-toggle__btn--active' : ''}`}
+                aria-pressed={viewMode === 'cards'}
+                onClick={() => handleViewModeChange('cards')}
+                title="Card view"
+              >
+                <i className="bi bi-grid" /> Cards
+              </button>
+              <button
+                type="button"
+                className={`lp-view-toggle__btn${viewMode === 'table' ? ' lp-view-toggle__btn--active' : ''}`}
+                aria-pressed={viewMode === 'table'}
+                onClick={() => handleViewModeChange('table')}
+                title="Table view"
+              >
+                <i className="bi bi-list-ul" /> Table
+              </button>
+            </div>
           </div>
         </div>
 
@@ -133,6 +200,45 @@ export default function LessonPlanning() {
               Create Lesson
             </Link>
           </div>
+        ) : viewMode === 'table' ? (
+          <div className="lp-table-wrap">
+            <table className="lp-table">
+              <thead>
+                <tr>
+                  <th scope="col">Lesson</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Level</th>
+                  <th scope="col">Duration</th>
+                  <th scope="col">Assigned</th>
+                  <th scope="col">Updated</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templates.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <button type="button" className="lp-table__title-link" onClick={() => openTemplate(t.id)}>
+                        {t.title}
+                      </button>
+                      {t.short_description ? (
+                        <p className="lp-table__desc">{t.short_description}</p>
+                      ) : null}
+                    </td>
+                    <td>{t.category}</td>
+                    <td>{skillLevelLabel(t.skill_level as LessonTemplateSkillLevel)}</td>
+                    <td>{t.estimated_duration_minutes ? `${t.estimated_duration_minutes} min` : '—'}</td>
+                    <td>
+                      {t.assigned_count ?? 0}
+                      {(t.completed_count ?? 0) > 0 ? ` · ${t.completed_count} done` : ''}
+                    </td>
+                    <td>{new Date(t.updated_at).toLocaleDateString()}</td>
+                    <td>{renderTemplateActions(t, true)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="lp-card-grid">
             {templates.map((t) => (
@@ -141,11 +247,11 @@ export default function LessonPlanning() {
                 className="lp-card lesson-template-card"
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/studio/lesson-planning/lesson/${t.id}`)}
+                onClick={() => openTemplate(t.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    navigate(`/studio/lesson-planning/lesson/${t.id}`)
+                    openTemplate(t.id)
                   }
                 }}
               >
@@ -165,24 +271,7 @@ export default function LessonPlanning() {
                   {' · '}
                   Updated {new Date(t.updated_at).toLocaleDateString()}
                 </p>
-                <div className="lp-card__actions" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    className="lp-btn lp-btn--primary lp-btn--sm"
-                    onClick={() => navigate(`/studio/lesson-planning/lesson/${t.id}`)}
-                  >
-                    Open
-                  </button>
-                  <button type="button" className="lp-btn lp-btn--sm" onClick={() => setAttachTemplate(t)}>
-                    Assign
-                  </button>
-                  <button type="button" className="lp-btn lp-btn--ghost lp-btn--sm" onClick={() => handleDuplicate(t.id)}>
-                    Duplicate
-                  </button>
-                  <button type="button" className="lp-btn lp-btn--ghost lp-btn--sm" onClick={() => handleArchive(t.id)}>
-                    Archive
-                  </button>
-                </div>
+                <div onClick={(e) => e.stopPropagation()}>{renderTemplateActions(t)}</div>
               </article>
             ))}
           </div>
@@ -195,7 +284,7 @@ export default function LessonPlanning() {
             teacherId={user.id}
             teacherProfile={userProfile}
             onClose={() => setAttachTemplate(null)}
-            onAttached={load}
+            onAttached={invalidateTemplates}
           />
         ) : null}
       </div>

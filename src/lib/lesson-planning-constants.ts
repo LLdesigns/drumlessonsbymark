@@ -1,4 +1,6 @@
 import type { AssignedLessonStatus, LessonBlockType, LessonTemplateSkillLevel } from '../types/lesson-planning'
+import { defaultDrumNotationContent } from './drum-notation'
+import { defaultMusicNotationContent } from './music-notation'
 
 export const LESSON_CATEGORIES = [
   'Rudiments',
@@ -34,15 +36,32 @@ export const LESSON_BLOCK_TYPES: {
   icon: string
   description: string
 }[] = [
-  { type: 'text', label: 'Text', icon: 'bi-text-paragraph', description: 'Instructions and teaching notes' },
+  {
+    type: 'text',
+    label: 'Text',
+    icon: 'bi-text-paragraph',
+    description: 'Written tutorial — explain and guide alongside video',
+  },
+  {
+    type: 'sequencer',
+    label: 'Sequencer',
+    icon: 'bi-grid-3x3-gap',
+    description: 'Build drum grooves on a grid with playback and staff view',
+  },
+  {
+    type: 'notation',
+    label: 'Notation',
+    icon: 'bi-file-music',
+    description: 'Write and preview traditional music notation for any instrument',
+  },
   {
     type: 'notation_image',
-    label: 'Notation Image',
-    icon: 'bi-file-earmark-music',
-    description: 'Upload drum notation or sheet music',
+    label: 'Image',
+    icon: 'bi-image',
+    description: 'Upload a chart, photo, or PDF',
   },
   { type: 'video', label: 'Video', icon: 'bi-camera-video', description: 'Demo videos or embeds' },
-  { type: 'audio', label: 'Audio', icon: 'bi-music-note-beamed', description: 'Play-along or practice tracks' },
+  { type: 'audio', label: 'Audio', icon: 'bi-headphones', description: 'Play-along or practice tracks' },
   { type: 'tempo', label: 'Tempo / BPM', icon: 'bi-speedometer2', description: 'BPM goals for this lesson' },
   { type: 'rudiment', label: 'Rudiment', icon: 'bi-lightning-charge', description: 'Sticking patterns and rudiments' },
   { type: 'checklist', label: 'Practice Tasks', icon: 'bi-check2-square', description: 'Homework checklist for student' },
@@ -69,6 +88,10 @@ export function defaultBlockContent(type: LessonBlockType, displayTitle?: string
   switch (type) {
     case 'text':
       return { ...base, body: '' }
+    case 'sequencer':
+      return { ...defaultDrumNotationContent(), ...base } as Record<string, unknown>
+    case 'notation':
+      return { ...defaultMusicNotationContent(), ...base, title: displayTitle ?? 'Notation' } as Record<string, unknown>
     case 'notation_image':
       return { ...base, url: '', caption: '' }
     case 'video':

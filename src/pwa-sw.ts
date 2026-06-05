@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>
@@ -23,6 +25,40 @@ const navigationHandler = createHandlerBoundToURL('/index.html')
 registerRoute(
   new NavigationRoute(navigationHandler, {
     denylist: [/\/[^/?]+\.[^/]+$/],
+  })
+)
+
+// Static images and fonts from same origin — cache first
+registerRoute(
+  ({ request, url }) =>
+    request.destination === 'image' ||
+    request.destination === 'font' ||
+    /\.(png|svg|woff2?|webp)$/i.test(url.pathname),
+  new CacheFirst({
+    cacheName: 'studio-static-assets',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 80,
+        maxAgeSeconds: 30 * 24 * 60 * 60,
+      }),
+    ],
+  })
+)
+
+// CDN styles/fonts (bootstrap icons, google fonts) — stale-while-revalidate
+registerRoute(
+  ({ url }) =>
+    url.origin === 'https://cdn.jsdelivr.net' ||
+    url.origin === 'https://fonts.googleapis.com' ||
+    url.origin === 'https://fonts.gstatic.com',
+  new StaleWhileRevalidate({
+    cacheName: 'studio-cdn-assets',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 40,
+        maxAgeSeconds: 7 * 24 * 60 * 60,
+      }),
+    ],
   })
 )
 

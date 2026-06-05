@@ -1,0 +1,16 @@
+{
+  "id": "clean_guitar",
+  "name": "Clean Guitar",
+  "license": "Generated teaching tones — replace with Karoryfer Shinyguitar CC0 in /audio/packs/clean_guitar/",
+  "type": "melodic",
+  "baseUrl": "/audio/packs/clean_guitar/",
+  "fallback": "synth",
+  "synth": {
+    "waveform": "sawtooth",
+    "gain": 0.14
+  },
+  "root_notes": [
+    { "note": "E4", "midi": 64, "file": "guitar_E4.wav" },
+    { "note": "A4", "midi": 69, "file": "guitar_A4.wav" }
+  ]
+}

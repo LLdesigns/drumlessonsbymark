@@ -12,6 +12,8 @@
     "build": "tsc -b && vite build && node scripts/fix-mime-types.js",
     "lint": "eslint .",
     "preview": "vite preview",
+    "capture:help-screenshots": "node scripts/capture-help-screenshots.mjs",
+    "setup:audio": "node scripts/setup-audio-assets.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "ensure-nojekyll": "node -e \"require('fs').writeFileSync('dist/.nojekyll', '')\""
@@ -45,6 +47,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "gh-pages": "^6.2.0",
     "globals": "^16.3.0",
+    "playwright": "^1.52.0",
     "postcss": "^8.5.6",
     "supabase": "^2.54.11",
     "tailwindcss": "^4.1.13",

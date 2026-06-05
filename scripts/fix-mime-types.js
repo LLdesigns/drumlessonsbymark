@@ -14,7 +14,19 @@ if (!fs.existsSync(nojekyllPath)) {
 }
 
 // Netlify/Cloudflare-style headers (ignored on GitHub Pages but harmless)
-const headersContent = `/assets/*.js
+const headersContent = `/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/pwa-sw.js
+  Cache-Control: no-cache, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.js
   Content-Type: text/javascript; charset=utf-8
 
 /assets/*.css
@@ -26,14 +38,20 @@ const headersContent = `/assets/*.js
 /assets/*.woff
   Content-Type: font/woff
 
+/help/*
+  Cache-Control: public, max-age=86400
+
 /*.png
   Content-Type: image/png
+  Cache-Control: public, max-age=604800
 
 /*.svg
   Content-Type: image/svg+xml
+  Cache-Control: public, max-age=604800
 
 /*.webmanifest
   Content-Type: application/manifest+json
+  Cache-Control: public, max-age=86400
 `
 
 fs.writeFileSync(path.join(distDir, '_headers'), headersContent)

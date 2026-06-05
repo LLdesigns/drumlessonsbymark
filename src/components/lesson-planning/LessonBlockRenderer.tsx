@@ -1,55 +1,75 @@
 import {
   CHECKLIST_TASK_TYPES,
-  isHtmlBody,
+  normalizeLessonTextHtml,
   parseStickingPattern,
-  sanitizeLessonHtml,
 } from '../../lib/block-content-utils'
+import { normalizeDrumNotationContent, notationHasNotes } from '../../lib/drum-notation'
 import {
   embedVideoUrl,
   skillLevelLabel,
 } from '../../lib/lesson-planning-constants'
+import { getBlockLabel, resolveLinkedBlockId, type LessonBlockRef } from '../../lib/practice-task-utils'
 import type {
   AssignedLessonBlock,
+  BlockProgressKind,
   ChecklistBlockContent,
+  DrumNotationBlockContent,
   LessonTemplateBlock,
   PracticeTaskCompletion,
   RudimentBlockContent,
+  StudentBlockProgress,
   TempoBlockContent,
 } from '../../types/lesson-planning'
+import LessonVideoPlayer from './LessonVideoPlayer'
 import PracticeTaskCheck from './PracticeTaskCheck'
+import DrumNotationView from './blocks/DrumNotationView'
+import MusicNotationStudentView from './blocks/MusicNotationStudentView'
+import { normalizeMusicNotationContent } from '../../lib/music-notation'
 
 type Block = LessonTemplateBlock | AssignedLessonBlock
 
 interface LessonBlockRendererProps {
   block: Block
   mode?: 'teacher' | 'student'
+  readOnly?: boolean
   completions?: PracticeTaskCompletion[]
+  blockProgress?: StudentBlockProgress[]
+  allBlocks?: LessonBlockRef[]
   onToggleTask?: (blockId: string, itemId: string, completed: boolean) => void
+  onScrollToBlock?: (blockId: string) => void
+  onBlockProgress?: (blockId: string, kind: BlockProgressKind, payload?: Record<string, unknown>) => void
   togglingTaskId?: string | null
 }
 
 export default function LessonBlockRenderer({
   block,
   mode = 'student',
+  readOnly = false,
   completions = [],
+  blockProgress = [],
+  allBlocks = [],
   onToggleTask,
+  onScrollToBlock,
+  onBlockProgress,
   togglingTaskId = null,
 }: LessonBlockRendererProps) {
   const c = block.content as unknown as Record<string, unknown>
+  const isStudentView = mode === 'student'
+  const track = (kind: BlockProgressKind, payload?: Record<string, unknown>) => {
+    if (isStudentView && onBlockProgress) onBlockProgress(block.id, kind, payload)
+  }
 
   switch (block.block_type) {
     case 'text': {
       const body = String(c.body ?? '')
+      const html = normalizeLessonTextHtml(body)
+      if (!html) return null
       return (
         <div className="lesson-block-render lesson-block-render--text">
-          {isHtmlBody(body) ? (
-            <div
-              className="lesson-rich-text"
-              dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(body) }}
-            />
-          ) : (
-            <p className="studio-subtext" style={{ whiteSpace: 'pre-wrap' }}>{body}</p>
-          )}
+          <div
+            className="lesson-rich-text lesson-rich-text--student"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         </div>
       )
     }
@@ -59,8 +79,37 @@ export default function LessonBlockRenderer({
       if (!url) return null
       return (
         <div className="lesson-block-render">
-          <img src={url} alt={String(c.caption || 'Drum notation')} className="lesson-notation-img" />
+          <img src={url} alt={String(c.caption || 'Lesson image')} className="lesson-notation-img" />
           {c.caption ? <p className="studio-subtext" style={{ marginTop: '0.35rem' }}>{String(c.caption)}</p> : null}
+        </div>
+      )
+    }
+
+    case 'sequencer': {
+      const notation = normalizeDrumNotationContent(c as unknown as DrumNotationBlockContent)
+      if (!notationHasNotes(notation)) return null
+      return (
+        <div className="lesson-block-render lesson-block-render--notation">
+          <DrumNotationView
+            content={notation}
+            showPlayback
+            onPlaybackStarted={() => track('played', { source: 'notation_playback' })}
+          />
+        </div>
+      )
+    }
+
+    case 'notation': {
+      const music = normalizeMusicNotationContent(c)
+      return (
+        <div className="lesson-block-render lesson-block-render--music-notation">
+          <MusicNotationStudentView
+            content={music}
+            showPlayback
+            showTitle={!isStudentView}
+            showSheetTitle={!isStudentView}
+            onPlaybackStarted={() => track('played', { source: 'music_notation_playback' })}
+          />
         </div>
       )
     }
@@ -72,13 +121,13 @@ export default function LessonBlockRenderer({
       return (
         <div className="lesson-block-render">
           {c.title ? <p className="studio-heading" style={{ fontSize: '0.95rem' }}>{String(c.title)}</p> : null}
-          {embed ? (
-            <div className="lesson-video-embed">
-              <iframe src={embed} title="Lesson video" allowFullScreen />
-            </div>
-          ) : (
-            <video src={url} controls style={{ width: '100%', borderRadius: 8, marginTop: '0.5rem' }} />
-          )}
+          <LessonVideoPlayer
+            url={url}
+            embedUrl={embed}
+            title={String(c.title || 'Lesson video')}
+            onEngaged={() => track('viewed', { source: 'video_engaged' })}
+            onViewed={() => track('viewed', { source: 'video_completed' })}
+          />
           {!embed ? (
             <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--studio-accent)', marginTop: '0.35rem', display: 'inline-block' }}>
               Open video →
@@ -94,7 +143,13 @@ export default function LessonBlockRenderer({
       return (
         <div className="lesson-block-render">
           {c.title ? <p className="studio-subtext">{String(c.title)}</p> : null}
-          <audio src={url} controls style={{ width: '100%', marginTop: '0.35rem' }} />
+          <audio
+            src={url}
+            controls
+            style={{ width: '100%', marginTop: '0.35rem' }}
+            onPlay={() => track('viewed', { source: 'audio_play' })}
+            onEnded={() => track('viewed', { source: 'audio_completed' })}
+          />
         </div>
       )
     }
@@ -162,13 +217,13 @@ export default function LessonBlockRenderer({
       const doneCount = items.filter((item) =>
         completions.some((co) => co.block_id === block.id && co.item_id === item.id)
       ).length
-      const canToggle = mode === 'student' && !!onToggleTask
+      const canToggle = isStudentView && !!onToggleTask && !readOnly
 
       return (
         <div className="lesson-block-render lesson-block-render--checklist">
           <div className="lesson-checklist-header">
             <p className="studio-label" style={{ margin: 0 }}>Practice tasks</p>
-            {items.length > 0 && canToggle ? (
+            {items.length > 0 && isStudentView ? (
               <span className="lesson-checklist-progress" aria-live="polite">
                 {doneCount} of {items.length} done
               </span>
@@ -186,18 +241,23 @@ export default function LessonBlockRenderer({
                 const typeMeta = CHECKLIST_TASK_TYPES.find((t) => t.value === (item.task_type ?? 'practice'))
                 const taskKey = `${block.id}:${item.id}`
                 const isToggling = togglingTaskId === taskKey
+                const linkedId = resolveLinkedBlockId(item.linked_block_id, allBlocks)
+                const linkedBlock = linkedId ? allBlocks.find((b) => b.id === linkedId) : undefined
+                const linkedProgress = linkedId
+                  ? blockProgress.filter((p) => p.block_id === linkedId)
+                  : []
 
                 return (
                   <li
                     key={item.id}
                     className={`lesson-checklist-item${done ? ' lesson-checklist-item--done' : ''}${isToggling ? ' lesson-checklist-item--busy' : ''}`}
                   >
-                    {canToggle ? (
+                    {isStudentView ? (
                       <PracticeTaskCheck
                         checked={done}
                         label={item.label}
-                        disabled={isToggling}
-                        onChange={(checked) => onToggleTask(block.id, item.id, checked)}
+                        disabled={!canToggle || isToggling}
+                        onChange={(checked) => onToggleTask?.(block.id, item.id, checked)}
                       />
                     ) : (
                       <span className="lesson-checklist-item__icon" aria-hidden="true">
@@ -207,8 +267,24 @@ export default function LessonBlockRenderer({
                     <div className="lesson-checklist-item__body">
                       <span className="lesson-checklist-item__label">{item.label}</span>
                       {item.hint ? <small className="lesson-checklist-item__hint">{item.hint}</small> : null}
+                      {linkedBlock && isStudentView ? (
+                        <button
+                          type="button"
+                          className="lesson-checklist-item__link"
+                          onClick={() => linkedId && onScrollToBlock?.(linkedId)}
+                        >
+                          <i className="bi bi-arrow-down-circle" /> Go to {getBlockLabel(linkedBlock)}
+                        </button>
+                      ) : null}
+                      {item.auto_complete && linkedBlock && !done && isStudentView ? (
+                        <small className="lesson-checklist-item__auto-hint">
+                          {linkedProgress.length > 0
+                            ? 'Linked block engaged — checking off…'
+                            : 'Checks off when you complete the linked block'}
+                        </small>
+                      ) : null}
                     </div>
-                    {done && canToggle ? (
+                    {done && isStudentView ? (
                       <span className="lesson-checklist-item__done-badge" aria-hidden="true">
                         <i className="bi bi-check-circle-fill" />
                       </span>

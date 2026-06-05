@@ -18,10 +18,19 @@ import {
 } from '../../../lib/lesson-planning-service'
 import { displayName, fetchProfileByUserId } from '../../../lib/studio-service'
 import { useAuthStore } from '../../../store/auth'
-import BlockPickerModal from './BlockPickerModal'
-import CanvasBlockCard from './CanvasBlockCard'
+import {
+  autoLayoutBentoBlocks,
+  layoutForBentoCell,
+  nextBentoPlacement,
+  prepareBlocksForSave,
+  readStoredCanvasView,
+  writeStoredCanvasView,
+  type CanvasViewMode,
+} from '../../../lib/lesson-builder-canvas-layout'
+import LessonBuilderCanvas from './LessonBuilderCanvas'
+import LessonBuilderHelp from './LessonBuilderHelp'
 import LessonBuilderInspector, { type AssignedDetails } from './LessonBuilderInspector'
-import TeachModeView from './TeachModeView'
+import StudentPreviewOverlay from './StudentPreviewOverlay'
 import LessonAssignedNotesPanel from '../LessonAssignedNotesPanel'
 import LessonBuilderDrawerBackdrop from './LessonBuilderDrawerBackdrop'
 import LessonBuilderPanelHead from './LessonBuilderPanelHead'
@@ -34,7 +43,7 @@ interface AssignedLessonWorkspaceProps {
 
 export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWorkspaceProps) {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, userProfile } = useAuthStore()
 
   const [title, setTitle] = useState('')
   const [shortDescription, setShortDescription] = useState('')
@@ -60,9 +69,8 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [teachMode, setTeachMode] = useState(false)
-  const [showBlockPicker, setShowBlockPicker] = useState(false)
-  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null)
+  const [studentPreviewOpen, setStudentPreviewOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const {
     sidebarOpen,
     inspectorOpen,
@@ -76,12 +84,27 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [lessonTeacherId, setLessonTeacherId] = useState<string | null>(null)
+  const [canvasViewMode, setCanvasViewMode] = useState<CanvasViewMode>(() =>
+    readStoredCanvasView(assignedId)
+  )
 
   const lessonStudentsUrl = templateId
     ? `/studio/lesson-planning/lesson/${templateId}?tab=students`
     : '/studio/lesson-planning'
 
   const markDirty = useCallback(() => setDirty(true), [])
+
+  useEffect(() => {
+    setCanvasViewMode(readStoredCanvasView(assignedId))
+  }, [assignedId])
+
+  const handleCanvasViewModeChange = useCallback(
+    (mode: CanvasViewMode) => {
+      setCanvasViewMode(mode)
+      writeStoredCanvasView(assignedId, mode)
+    },
+    [assignedId]
+  )
 
   useEffect(() => {
     if (!assignedId || !user?.id) return
@@ -136,12 +159,26 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
     if (isMobile) openInspector()
   }
 
-  const addBlock = (type: LessonBlockType, atIndex?: number) => {
+  const addBlock = (
+    type: LessonBlockType,
+    atIndex?: number,
+    bentoPlacement?: { gridCol: number; gridRow: number }
+  ) => {
     const meta = getBlockMeta(type)
+    let content = defaultBlockContent(type, meta?.label) as LessonBlockContent
+    if (canvasViewMode === 'bento') {
+      const placement = bentoPlacement
+        ? layoutForBentoCell(type, bentoPlacement.gridCol, bentoPlacement.gridRow)
+        : nextBentoPlacement(blocks, type)
+      content = {
+        ...(content as object),
+        canvasLayout: placement,
+      } as LessonBlockContent
+    }
     const newBlock: EditableBlock = {
       id: crypto.randomUUID(),
       block_type: type,
-      content: defaultBlockContent(type, meta?.label) as LessonBlockContent,
+      content,
       sort_order: blocks.length,
     }
     let next: EditableBlock[]
@@ -151,6 +188,9 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
       next = next.map((b, i) => ({ ...b, sort_order: i }))
     } else {
       next = [...blocks, newBlock]
+    }
+    if (canvasViewMode === 'bento') {
+      next = autoLayoutBentoBlocks(next)
     }
     setBlocks(next)
     setSelectedBlockId(newBlock.id)
@@ -190,10 +230,12 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
         status: assigned.status,
         due_date: assigned.dueDate ? new Date(assigned.dueDate).toISOString() : null,
       })
+      const blocksToSave = prepareBlocksForSave(blocks, canvasViewMode)
       await saveAssignedLessonBlocks(
         assignedId,
-        blocks.map((b, i) => ({ block_type: b.block_type, content: b.content, sort_order: i }))
+        blocksToSave.map((b, i) => ({ block_type: b.block_type, content: b.content, sort_order: i }))
       )
+      setBlocks(blocksToSave)
       setDirty(false)
     } catch (err) {
       setSaveError(formatLessonPlanningError(err))
@@ -212,8 +254,30 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
     )
   }
 
-  if (teachMode) {
-    return <TeachModeView title={title} blocks={blocks} onExit={() => setTeachMode(false)} />
+  if (studentPreviewOpen) {
+    const instructions = assigned.customStudentInstructions || studentInstructions
+    const targetBpm = assigned.targetBpm === '' ? null : Number(assigned.targetBpm)
+    return (
+      <StudentPreviewOverlay
+        title={title}
+        lessonGoal={lessonGoal}
+        shortDescription={shortDescription}
+        studentInstructions={instructions}
+        practiceAssignment={practiceAssignment}
+        dueDate={assigned.dueDate || null}
+        targetBpm={Number.isFinite(targetBpm) ? targetBpm : null}
+        status={assigned.status}
+        category={category}
+        skillLevel={skillLevel}
+        estimatedDurationMinutes={duration}
+        authorName={displayName(userProfile) || 'Mark'}
+        blocks={blocks}
+        assignedLessonId={assignedId}
+        studentName={assigned.studentName}
+        layoutMode={canvasViewMode}
+        onExit={() => setStudentPreviewOpen(false)}
+      />
+    )
   }
 
   return (
@@ -243,8 +307,11 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
               {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
-          <button type="button" className="lesson-builder__btn lesson-builder__btn--teach" onClick={() => setTeachMode(true)}>
-            <i className="bi bi-bullseye" /> Teach Mode
+          <button type="button" className="lesson-builder__btn lesson-builder__btn--preview" onClick={() => setStudentPreviewOpen(true)}>
+            <i className="bi bi-eye" /> Student preview
+          </button>
+          <button type="button" className="lesson-builder__btn" title="Help & documentation" onClick={() => setHelpOpen(true)}>
+            <i className="bi bi-question-circle" /> Help
           </button>
         </div>
       </header>
@@ -294,76 +361,54 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
               )
             })}
           </div>
-          <button type="button" className="lesson-builder__add-block" onClick={() => setShowBlockPicker(true)}>
-            <i className="bi bi-plus-lg" /> Add block
-          </button>
         </aside>
 
-        <main className="lesson-builder__canvas-wrap">
-          <div
-            className="lesson-builder__canvas"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setSelectedBlockId(null)
-            }}
-          >
-            {blocks.length === 0 ? (
-              <div className="lesson-builder__canvas-empty">
-                <h3>Customize this student&apos;s lesson</h3>
-                <p>Add or edit blocks — changes here won&apos;t affect your library template.</p>
-                <button type="button" className="lesson-builder__btn lesson-builder__btn--primary" onClick={() => setShowBlockPicker(true)}>
-                  <i className="bi bi-plus-lg" /> Add block
-                </button>
-              </div>
-            ) : (
-              blocks.map((block, index) => (
-                <div key={block.id} id={`block-${block.id}`}>
-                  <div className="canvas-insert">
-                    <button type="button" onClick={() => { setInsertAtIndex(index); setShowBlockPicker(true) }}>+ Insert block</button>
-                  </div>
-                  <CanvasBlockCard
-                    block={block}
-                    index={index}
-                    selected={selectedBlockId === block.id}
-                    collapsed={collapsedIds.has(block.id)}
-                    previewMode={false}
-                    userId={user?.id}
-                    onContentUpdate={(content) => updateBlockContent(index, content)}
-                    onSelect={() => selectBlock(block.id)}
-                    onToggleCollapse={() => {
-                      setCollapsedIds((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(block.id)) next.delete(block.id)
-                        else next.add(block.id)
-                        return next
-                      })
-                    }}
-                    onDuplicate={() => {
-                      const dup = duplicateBlock(block)
-                      const next = [...blocks]
-                      next.splice(index + 1, 0, dup)
-                      setBlocks(next.map((b, i) => ({ ...b, sort_order: i })))
-                      markDirty()
-                    }}
-                    onDelete={() => {
-                      setBlocks(blocks.filter((b) => b.id !== block.id).map((b, i) => ({ ...b, sort_order: i })))
-                      if (selectedBlockId === block.id) setSelectedBlockId(null)
-                      markDirty()
-                    }}
-                    onDragStart={setDragIndex}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(toIndex) => {
-                      if (dragIndex != null) {
-                        setBlocks(reorderBlocks(blocks, dragIndex, toIndex))
-                        setDragIndex(null)
-                        markDirty()
-                      }
-                    }}
-                  />
-                </div>
-              ))
-            )}
-          </div>
-        </main>
+        <div className="lesson-builder__editor-zone">
+        <LessonBuilderCanvas
+          blocks={blocks}
+          selectedBlockId={selectedBlockId}
+          collapsedIds={collapsedIds}
+          dragIndex={dragIndex}
+          viewMode={canvasViewMode}
+          onViewModeChange={handleCanvasViewModeChange}
+          userId={user?.id}
+          emptyTitle="Customize this student's lesson"
+          emptyDescription="Click a block in the toolbar to add it, or drag one into your lesson flow. Changes here won't affect your library template."
+          onSelectBlock={selectBlock}
+          onToggleCollapse={(blockId) => {
+            setCollapsedIds((prev) => {
+              const next = new Set(prev)
+              if (next.has(blockId)) next.delete(blockId)
+              else next.add(blockId)
+              return next
+            })
+          }}
+          onAddBlock={addBlock}
+          onUpdateBlockContent={updateBlockContent}
+          onDuplicateBlock={(index) => {
+            const dup = duplicateBlock(blocks[index])
+            if (canvasViewMode === 'bento') {
+              const content = { ...(dup.content as object) } as Record<string, unknown>
+              delete content.canvasLayout
+              dup.content = content as LessonBlockContent
+            }
+            let next = [...blocks]
+            next.splice(index + 1, 0, dup)
+            next = next.map((b, i) => ({ ...b, sort_order: i }))
+            if (canvasViewMode === 'bento') next = autoLayoutBentoBlocks(next)
+            setBlocks(next)
+            markDirty()
+          }}
+          onDeleteBlock={(blockId) => {
+            setBlocks(blocks.filter((b) => b.id !== blockId).map((b, i) => ({ ...b, sort_order: i })))
+            if (selectedBlockId === blockId) setSelectedBlockId(null)
+            markDirty()
+          }}
+          onBlocksChange={setBlocks}
+          onDragIndexChange={setDragIndex}
+          onClearSelection={() => setSelectedBlockId(null)}
+          onDirty={markDirty}
+        />
 
         <LessonBuilderInspector
           open={inspectorOpen}
@@ -397,6 +442,7 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
           onAddTag={() => {}}
           onRemoveTag={() => {}}
         />
+        </div>
       </div>
 
       {user?.id && lessonTeacherId ? (
@@ -410,9 +456,7 @@ export default function AssignedLessonWorkspace({ assignedId }: AssignedLessonWo
         </div>
       ) : null}
 
-      {showBlockPicker ? (
-        <BlockPickerModal onPick={(type) => addBlock(type, insertAtIndex ?? undefined)} onClose={() => { setShowBlockPicker(false); setInsertAtIndex(null) }} />
-      ) : null}
+      {helpOpen ? <LessonBuilderHelp onClose={() => setHelpOpen(false)} initialPageId="assigned-editor" /> : null}
     </div>
   )
 }

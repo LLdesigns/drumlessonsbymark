@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth'
 import { getDefaultPathForRole } from '../lib/permissions'
 import { getLoginPathForPathname } from '../lib/login-portal'
 import AuthProgressScreen from '../components/AuthProgressScreen'
+import { STUDIO_BRAND_FULL } from '../lib/studio-brand'
 
 /** PWA start_url — opens the right portal after install */
 export default function StudioAppEntry() {
@@ -28,7 +29,7 @@ export default function StudioAppEntry() {
   return (
     <AuthProgressScreen
       message={message}
-      subtitle="Mark's Drum Studio"
+      subtitle={STUDIO_BRAND_FULL}
     />
   )
 }

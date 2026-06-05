@@ -143,15 +143,30 @@ export async function notifyPracticeTaskCompleted(
   teacherId: string,
   studentName: string,
   taskLabel: string,
-  lessonTitle: string
+  lessonTitle: string,
+  extras?: {
+    assigned_lesson_id?: string
+    block_id?: string
+    item_id?: string
+    auto?: boolean
+  }
 ) {
   await dispatchNotification({
     recipientId: teacherId,
     type: 'practice_task_completed',
     title: 'Practice task completed',
     body: `${studentName} completed "${taskLabel}" on ${lessonTitle}`,
-    actionUrl: '/studio/lesson-planning',
-    metadata: { task_label: taskLabel, lesson_title: lessonTitle },
+    actionUrl: extras?.assigned_lesson_id
+      ? `/studio/students?lesson=${extras.assigned_lesson_id}`
+      : '/studio/lesson-planning',
+    metadata: {
+      task_label: taskLabel,
+      lesson_title: lessonTitle,
+      assigned_lesson_id: extras?.assigned_lesson_id,
+      block_id: extras?.block_id,
+      item_id: extras?.item_id,
+      auto: extras?.auto ?? false,
+    },
   })
 }
 

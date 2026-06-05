@@ -17,6 +17,8 @@ export type LessonEnrollmentSource = 'teacher' | 'student'
 export type LessonBlockType =
   | 'text'
   | 'notation_image'
+  | 'sequencer'
+  | 'notation'
   | 'video'
   | 'audio'
   | 'tempo'
@@ -32,6 +34,109 @@ export interface TextBlockContent {
 export interface NotationImageBlockContent {
   url: string
   caption?: string
+}
+
+export type DrumVoiceId =
+  | 'crash'
+  | 'ride'
+  | 'hihat'
+  | 'snare'
+  | 'tom'
+  | 'tom_14'
+  | 'tom_16'
+  | 'kick'
+
+/** true = normal hit; accent/open/ghost are snare/hihat variants */
+export type DrumHit = true | 'accent' | 'open' | 'ghost'
+
+export type DrumStep = Partial<Record<DrumVoiceId, DrumHit>>
+
+export interface DrumNotationMeasure {
+  id: string
+  steps: DrumStep[]
+}
+
+export interface DrumNotationBlockContent {
+  /** Beats per measure (usually 4) */
+  beats_per_measure: number
+  /** Subdivisions per beat: 2 = eighths, 4 = sixteenths */
+  steps_per_beat: 2 | 4
+  measures: DrumNotationMeasure[]
+  caption?: string
+  /** Playback tempo for groove preview (default 90) */
+  playback_bpm?: number
+  /** Repeat groove playback until stopped (default true) */
+  playback_loop?: boolean
+  /** Click track during playback (default true) */
+  playback_metronome?: boolean
+  /** Count-in bars before groove starts, 0–2 (default 1) */
+  playback_count_in?: 0 | 1 | 2
+}
+
+/** Student practice tempo as a percentage of the teacher BPM */
+export type DrumPracticeSpeed = 50 | 75 | 90 | 100
+
+export const DRUM_PRACTICE_SPEEDS: DrumPracticeSpeed[] = [50, 75, 90, 100]
+
+export type MusicNotationInstrument = 'piano' | 'guitar' | 'bass' | 'drums' | 'voice'
+
+export type MusicNotationTimeSignature = '4/4' | '3/4' | '6/8'
+
+export type MusicNotationKeySignature = 'C' | 'G' | 'D' | 'A' | 'E' | 'F' | 'Bb' | 'Eb'
+
+export type MusicNotationClef = 'treble' | 'bass' | 'percussion'
+
+export type MusicNotationDuration = 'whole' | 'half' | 'quarter' | 'eighth' | 'sixteenth'
+
+export type MusicNotationPitch = 'C4' | 'D4' | 'E4' | 'F4' | 'G4' | 'A4' | 'B4' | 'C5'
+
+export type MusicNotationDrumVoice = 'kick' | 'snare' | 'hihat' | 'tom' | 'crash' | 'ride'
+
+export interface MusicNotationNote {
+  id: string
+  type: 'note' | 'rest'
+  pitch?: MusicNotationPitch
+  voice?: MusicNotationDrumVoice
+  duration: MusicNotationDuration
+  /** 1-based beat position within the measure (quarter-note units in 4/4) */
+  startBeat: number
+}
+
+export interface MusicNotationMeasure {
+  id: string
+  notes: MusicNotationNote[]
+}
+
+export interface MusicNotationTrack {
+  id: string
+  name: string
+  instrument: MusicNotationInstrument
+  clef: MusicNotationClef
+  measures: MusicNotationMeasure[]
+}
+
+export interface MusicNotationData {
+  version: 1
+  tracks: MusicNotationTrack[]
+  /** Measures per staff row before wrapping to the next system (editor layout). */
+  measuresPerSystem?: number
+}
+
+/** Student practice tempo as a percentage of the teacher BPM */
+export type MusicPracticeSpeed = 50 | 75 | 100
+
+export const MUSIC_PRACTICE_SPEEDS: MusicPracticeSpeed[] = [50, 75, 100]
+
+export interface MusicNotationBlockContent {
+  title?: string
+  instrument: MusicNotationInstrument
+  tempo: number
+  timeSignature: MusicNotationTimeSignature
+  keySignature: MusicNotationKeySignature
+  caption?: string
+  notationData: MusicNotationData
+  /** Repeat playback until stopped (default false for student) */
+  playback_loop?: boolean
 }
 
 export interface VideoBlockContent {
@@ -76,6 +181,10 @@ export interface ChecklistItem {
   label: string
   hint?: string
   task_type?: ChecklistTaskType
+  /** Block in this lesson this task relates to (template or assigned block id) */
+  linked_block_id?: string
+  /** Auto-check when linked block progress is recorded */
+  auto_complete?: boolean
 }
 
 export interface ChecklistBlockContent {
@@ -93,6 +202,8 @@ export interface ResourceLinkBlockContent {
 export type LessonBlockContent =
   | TextBlockContent
   | NotationImageBlockContent
+  | DrumNotationBlockContent
+  | MusicNotationBlockContent
   | VideoBlockContent
   | AudioBlockContent
   | TempoBlockContent
@@ -202,6 +313,39 @@ export interface PracticeTaskCompletion {
   completed_at: string
   practice_note?: string | null
   media_url?: string | null
+}
+
+export type BlockProgressKind = 'viewed' | 'played' | 'completed'
+
+export interface StudentBlockProgress {
+  id: string
+  assigned_lesson_id: string
+  block_id: string
+  student_id: string
+  progress_kind: BlockProgressKind
+  payload?: Record<string, unknown>
+  completed_at: string
+}
+
+export type StudioActivityEventName =
+  | 'lesson_opened'
+  | 'lesson_completed'
+  | 'checklist_item_completed'
+  | 'checklist_item_unchecked'
+  | 'block_viewed'
+  | 'block_played'
+  | 'notation_playback_started'
+  | 'practice_media_uploaded'
+
+export interface StudentActivityEvent {
+  id: string
+  student_id: string
+  assigned_lesson_id?: string | null
+  block_id?: string | null
+  item_id?: string | null
+  event_name: StudioActivityEventName
+  properties?: Record<string, unknown>
+  occurred_at: string
 }
 
 export interface StudentPracticeNote {

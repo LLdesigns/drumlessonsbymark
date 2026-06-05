@@ -1,4 +1,5 @@
 import { defaultBlockContent, newChecklistItem } from './lesson-planning-constants'
+import { DRUM_GROOVE_PRESETS } from './drum-notation'
 import type { EditableBlock } from './lesson-builder-utils'
 import type { LessonTemplateSkillLevel } from '../types/lesson-planning'
 
@@ -36,9 +37,14 @@ export const LESSON_STARTER_TEMPLATES: LessonStarterTemplate[] = [
     duration: 30,
     lesson_goal: 'Play a steady rock groove with consistent hi-hat and kick pattern.',
     blocks: () => [
-      { ...block('text', 'Lesson overview', { body: 'Today we focus on a basic rock groove. Keep the hi-hat steady and lock in with the metronome.' }), sort_order: 0 },
+      { ...block('text', 'Before you watch', {
+        body: '<p>In this lesson you\'ll learn a steady rock groove. Read this first, then watch the demo.</p><h4>What to focus on</h4><ul><li>Even hi-hat strokes throughout the bar</li><li>Kick on beats 1 and 3</li><li>Stay relaxed — speed comes after clean timing</li></ul>',
+      }), sort_order: 0 },
       { ...block('video', 'Groove demonstration', { title: 'Groove demonstration' }), sort_order: 1 },
-      { ...block('notation_image', 'Basic rock groove', { caption: 'Basic rock groove' }), sort_order: 2 },
+      { ...block('sequencer', 'Basic rock groove', {
+        measures: DRUM_GROOVE_PRESETS[0].build(4, 4),
+        caption: 'Kick on 1 & 3, snare on 2 & 4, hi-hat steady',
+      }), sort_order: 2 },
       { ...block('tempo', 'Tempo goals', { starting_bpm: 60, target_bpm: 90, notes: 'Clean timing before speed.' }), sort_order: 3 },
       { ...block('checklist', 'Practice tasks', { items: [newChecklistItem('Play groove at 70 BPM for 5 min'), newChecklistItem('Watch demo video'), newChecklistItem('Record yourself once')] }), sort_order: 4 },
     ],
@@ -54,7 +60,9 @@ export const LESSON_STARTER_TEMPLATES: LessonStarterTemplate[] = [
     duration: 25,
     lesson_goal: 'Clean paradiddles with even strokes and controlled accents.',
     blocks: () => [
-      { ...block('text', 'Lesson focus', { body: 'We build paradiddle control — start slow, stay relaxed, aim for even sound.' }), sort_order: 0 },
+      { ...block('text', 'Lesson focus', {
+        body: '<p>We build paradiddle control in this lesson. Start slow, stay relaxed, and aim for even sound on every stroke.</p><p><span class="lesson-text-accent">Watch the sticking pattern</span> in the rudiment block, then use the tempo steps below.</p>',
+      }), sort_order: 0 },
       { ...block('rudiment', 'Paradiddle', { name: 'Paradiddle', sticking_pattern: 'R L R R · L R L L', tempo_goal: 100 }), sort_order: 1 },
       { ...block('tempo', 'Tempo progression', { starting_bpm: 60, target_bpm: 110 }), sort_order: 2 },
       { ...block('checklist', 'Weekly practice', { items: [newChecklistItem('Paradiddles 4 days this week'), newChecklistItem('Use a metronome every session')] }), sort_order: 3 },
@@ -63,7 +71,7 @@ export const LESSON_STARTER_TEMPLATES: LessonStarterTemplate[] = [
   {
     id: 'song',
     name: 'Song Breakdown',
-    icon: 'bi-music-note-list',
+    icon: 'bi-collection-play',
     description: 'Sections, fills, and play-along resources',
     title: 'Song Section Breakdown',
     category: 'Songs',
@@ -71,9 +79,14 @@ export const LESSON_STARTER_TEMPLATES: LessonStarterTemplate[] = [
     duration: 45,
     lesson_goal: 'Learn the verse and chorus grooves and connect the transitions.',
     blocks: () => [
-      { ...block('text', 'Song intro', { body: 'Break the song into sections. Master each part before full play-through.' }), sort_order: 0 },
+      { ...block('text', 'How to work through this song', {
+        body: '<p>Break the song into sections. Master each part before attempting a full play-through.</p><h4>Recommended order</h4><ol><li>Learn the verse groove (video + chart)</li><li>Learn the chorus groove</li><li>Connect the transitions at a slow tempo</li></ol>',
+      }), sort_order: 0 },
       { ...block('video', 'Section demo', { title: 'Verse groove demo' }), sort_order: 1 },
-      { ...block('notation_image', 'Verse chart', { caption: 'Verse notation' }), sort_order: 2 },
+      { ...block('sequencer', 'Verse groove', {
+        measures: DRUM_GROOVE_PRESETS[0].build(4, 4),
+        caption: 'Verse groove — learn hands first, then add kick',
+      }), sort_order: 2 },
       { ...block('resource_link', 'Play-along track', { label: 'Drumless / play-along', url: '' }), sort_order: 3 },
       { ...block('checklist', 'Practice plan', { items: [newChecklistItem('Learn verse groove'), newChecklistItem('Learn chorus groove'), newChecklistItem('Connect transitions')] }), sort_order: 4 },
     ],
@@ -89,7 +102,9 @@ export const LESSON_STARTER_TEMPLATES: LessonStarterTemplate[] = [
     duration: 30,
     lesson_goal: 'Relaxed grip and efficient wrist motion for controlled strokes.',
     blocks: () => [
-      { ...block('text', 'Technique focus', { body: 'Keep wrists relaxed. Let the stick rebound — don’t choke the sound.' }), sort_order: 0 },
+      { ...block('text', 'Before you watch', {
+        body: '<p>Keep your wrists relaxed and let the stick rebound — don\'t choke the sound.</p><p>After the demo, use the checklist to track daily practice.</p>',
+      }), sort_order: 0 },
       { ...block('video', 'Technique demo', { title: 'Grip & wrist motion' }), sort_order: 1 },
       { ...block('checklist', 'Practice reminders', { items: [newChecklistItem('Mirror check posture'), newChecklistItem('5 min slow singles daily')] }), sort_order: 2 },
     ],
@@ -105,7 +120,9 @@ export const LESSON_STARTER_TEMPLATES: LessonStarterTemplate[] = [
     duration: 30,
     lesson_goal: 'Comfortable setup, basic stroke, and first groove pattern.',
     blocks: () => [
-      { ...block('text', 'Welcome', { body: 'Welcome to the kit! Today: setup, stick grip, and your first pattern.' }), sort_order: 0 },
+      { ...block('text', 'Welcome', {
+        body: '<p>Welcome to the kit! This lesson covers setup, stick grip, and your first pattern.</p><p>Read each text section, then watch the matching video before moving on.</p>',
+      }), sort_order: 0 },
       { ...block('video', 'Setup & grip', { title: 'Drum setup & grip' }), sort_order: 1 },
       { ...block('tempo', 'Starting tempo', { starting_bpm: 50, target_bpm: 70 }), sort_order: 2 },
       { ...block('checklist', 'This week', { items: [newChecklistItem('Practice 10 min daily'), newChecklistItem('Review setup video')] }), sort_order: 3 },

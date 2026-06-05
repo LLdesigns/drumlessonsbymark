@@ -1,8 +1,13 @@
 import { detectVideoSource, embedVideoUrl } from '../../../lib/lesson-planning-constants'
+import { normalizeDrumNotationContent } from '../../../lib/drum-notation'
+import { normalizeMusicNotationContent } from '../../../lib/music-notation'
 import { uploadStudioMedia } from '../../../lib/studio-media-service'
 import type { EditableBlock } from '../../../lib/lesson-builder-utils'
 import type { ChecklistBlockContent, LessonBlockContent, RudimentBlockContent } from '../../../types/lesson-planning'
+import type { LessonBlockRef } from '../../../lib/practice-task-utils'
 import ChecklistBlockEditor from '../blocks/ChecklistBlockEditor'
+import DrumNotationBuilder from '../blocks/DrumNotationBuilder'
+import MusicNotationBuilder from '../blocks/MusicNotationBuilder'
 import RichTextEditor from '../blocks/RichTextEditor'
 import RudimentStickingBuilder from '../blocks/RudimentStickingBuilder'
 import TempoBlockEditor from '../blocks/TempoBlockEditor'
@@ -10,10 +15,11 @@ import TempoBlockEditor from '../blocks/TempoBlockEditor'
 interface CanvasBlockEditorProps {
   block: EditableBlock
   userId: string
+  siblingBlocks: LessonBlockRef[]
   onUpdate: (content: LessonBlockContent) => void
 }
 
-export default function CanvasBlockEditor({ block, userId, onUpdate }: CanvasBlockEditorProps) {
+export default function CanvasBlockEditor({ block, userId, siblingBlocks, onUpdate }: CanvasBlockEditorProps) {
   const c = block.content as unknown as Record<string, unknown>
 
   const set = (patch: Record<string, unknown>) => {
@@ -31,22 +37,39 @@ export default function CanvasBlockEditor({ block, userId, onUpdate }: CanvasBlo
 
   return (
     <div className="canvas-block__editor" onClick={(e) => e.stopPropagation()}>
-      <div className="lesson-builder__field">
-        <label>Block title</label>
-        <input
-          value={String(c.displayTitle ?? '')}
-          onChange={(e) => set({ displayTitle: e.target.value })}
-          placeholder="e.g. Groove demonstration"
-        />
-      </div>
+      {block.block_type !== 'notation' ? (
+        <div className="lesson-builder__field">
+          <label>Block title</label>
+          <input
+            value={String(c.displayTitle ?? '')}
+            onChange={(e) => set({ displayTitle: e.target.value })}
+            placeholder={
+              block.block_type === 'text'
+                ? 'e.g. Before you watch'
+                : block.block_type === 'sequencer'
+                  ? 'e.g. Verse groove'
+                  : 'e.g. Groove demonstration'
+            }
+          />
+        </div>
+      ) : null}
 
       {block.block_type === 'text' ? (
         <div className="lesson-builder__field">
-          <label>Content</label>
+          <label>Written tutorial</label>
+          <p className="lesson-builder__field-hint">
+            Explain what the student should learn and what to watch for — this text complements your video blocks.
+          </p>
           <RichTextEditor
+            key={block.id}
             value={String(c.body ?? '')}
-            onChange={(body) => set({ body })}
-            placeholder="Write teaching notes, instructions, or context…"
+            onChange={(body) =>
+              onUpdate({
+                ...(block.content as unknown as Record<string, unknown>),
+                body,
+              } as LessonBlockContent)
+            }
+            placeholder="Introduce the concept, break it into steps, highlight key points, then point them to the demo video…"
           />
         </div>
       ) : null}
@@ -83,15 +106,40 @@ export default function CanvasBlockEditor({ block, userId, onUpdate }: CanvasBlo
         </>
       ) : null}
 
+      {block.block_type === 'sequencer' ? (
+        <DrumNotationBuilder
+          content={normalizeDrumNotationContent(c)}
+          onChange={(notation) =>
+            onUpdate({
+              ...(block.content as unknown as Record<string, unknown>),
+              ...notation,
+            } as LessonBlockContent)
+          }
+        />
+      ) : null}
+
+      {block.block_type === 'notation' ? (
+        <MusicNotationBuilder
+          content={normalizeMusicNotationContent(c)}
+          onChange={(notation) =>
+            onUpdate({
+              ...(block.content as unknown as Record<string, unknown>),
+              ...notation,
+              displayTitle: notation.title,
+            } as LessonBlockContent)
+          }
+        />
+      ) : null}
+
       {block.block_type === 'notation_image' ? (
         <>
           <div className="lesson-builder__field">
-            <label>Upload notation</label>
+            <label>Upload image</label>
             <input type="file" accept="image/*,application/pdf" onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], 'url')} />
           </div>
           <div className="lesson-builder__field">
             <label>Caption</label>
-            <input value={String(c.caption ?? '')} onChange={(e) => set({ caption: e.target.value })} />
+            <input value={String(c.caption ?? '')} onChange={(e) => set({ caption: e.target.value })} placeholder="Optional label under the image" />
           </div>
           {c.url ? <img src={String(c.url)} alt="" className="lesson-notation-img" style={{ marginTop: '0.5rem' }} /> : null}
         </>
@@ -120,6 +168,8 @@ export default function CanvasBlockEditor({ block, userId, onUpdate }: CanvasBlo
 
       {block.block_type === 'checklist' ? (
         <ChecklistBlockEditor
+          currentBlockId={block.id}
+          siblingBlocks={siblingBlocks}
           instructions={String((c as unknown as ChecklistBlockContent).instructions ?? '')}
           items={(c as unknown as ChecklistBlockContent).items ?? []}
           onChange={(patch) => set(patch as Record<string, unknown>)}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import StudentPreviewOverlay from './StudentPreviewOverlay'
 import LessonBlockRenderer from '../LessonBlockRenderer'
 import { useAuthStore } from '../../../store/auth'
 import {
@@ -27,14 +28,14 @@ interface LessonSessionWorkspaceProps {
   scheduledId?: string
   initialStudentId?: string | null
   returnToStudentProfile?: boolean
-  initialTeachLessonId?: string | null
+  initialPreviewLessonId?: string | null
 }
 
 export default function LessonSessionWorkspace({
   scheduledId,
   initialStudentId,
   returnToStudentProfile,
-  initialTeachLessonId,
+  initialPreviewLessonId,
 }: LessonSessionWorkspaceProps) {
   const navigate = useNavigate()
   const { user, userRole, userProfile } = useAuthStore()
@@ -58,9 +59,9 @@ export default function LessonSessionWorkspace({
   const [todayFocus, setTodayFocus] = useState('')
   const [saving, setSaving] = useState(false)
   const [loadingLessons, setLoadingLessons] = useState(!!initialStudentId)
-  const [teachLessonId, setTeachLessonId] = useState<string | null>(initialTeachLessonId ?? null)
-  const [teachLessonFull, setTeachLessonFull] = useState<AssignedLesson | null>(null)
-  const [loadingTeach, setLoadingTeach] = useState(false)
+  const [previewLessonId, setPreviewLessonId] = useState<string | null>(initialPreviewLessonId ?? null)
+  const [previewLessonFull, setPreviewLessonFull] = useState<AssignedLesson | null>(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
   const [mobileTab, setMobileTab] = useState<SessionMobileTab>('lessons')
 
   const backHref = returnToStudentProfile && selectedStudentId
@@ -105,26 +106,26 @@ export default function LessonSessionWorkspace({
   }, [user?.id, selectedStudentId])
 
   useEffect(() => {
-    if (initialTeachLessonId && assignedLessons.some((l) => l.id === initialTeachLessonId)) {
-      setTeachLessonId(initialTeachLessonId)
+    if (initialPreviewLessonId && assignedLessons.some((l) => l.id === initialPreviewLessonId)) {
+      setPreviewLessonId(initialPreviewLessonId)
     }
-  }, [initialTeachLessonId, assignedLessons])
+  }, [initialPreviewLessonId, assignedLessons])
 
   useEffect(() => {
-    if (!teachLessonId) {
-      setTeachLessonFull(null)
+    if (!previewLessonId) {
+      setPreviewLessonFull(null)
       return
     }
-    const cached = assignedLessons.find((l) => l.id === teachLessonId)
+    const cached = assignedLessons.find((l) => l.id === previewLessonId)
     if (cached?.blocks?.length) {
-      setTeachLessonFull(cached)
+      setPreviewLessonFull(cached)
       return
     }
-    setLoadingTeach(true)
-    fetchAssignedLesson(teachLessonId)
-      .then((full) => setTeachLessonFull(full))
-      .finally(() => setLoadingTeach(false))
-  }, [teachLessonId, assignedLessons])
+    setLoadingPreview(true)
+    fetchAssignedLesson(previewLessonId)
+      .then((full) => setPreviewLessonFull(full))
+      .finally(() => setLoadingPreview(false))
+  }, [previewLessonId, assignedLessons])
 
   const handleSaveSessionNote = async () => {
     if (!user?.id || !selectedStudentId) return
@@ -155,36 +156,61 @@ export default function LessonSessionWorkspace({
     }
   }
 
-  const teachLesson = teachLessonFull ?? assignedLessons.find((l) => l.id === teachLessonId)
+  const previewLesson = previewLessonFull ?? assignedLessons.find((l) => l.id === previewLessonId)
 
-  if (teachLessonId) {
-    return (
-      <div className="teach-mode">
-        <header className="teach-mode__header">
-          <div>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--lb-muted)', textTransform: 'uppercase' }}>
-              Teach mode
-            </p>
-            <h1 style={{ margin: '0.15rem 0 0', fontSize: '1.15rem' }}>{teachLesson?.title ?? 'Lesson'}</h1>
-          </div>
-          <button type="button" className="lesson-builder__btn" onClick={() => setTeachLessonId(null)}>
-            <i className="bi bi-x-lg" /> Back
-          </button>
-        </header>
-        <div className="teach-mode__content">
-          {loadingTeach ? (
+  if (previewLessonId) {
+    if (loadingPreview && !previewLesson) {
+      return (
+        <div className="student-preview">
+          <header className="student-preview__header">
+            <p className="student-preview__eyebrow">Preview — student view</p>
+            <button type="button" className="lesson-builder__btn" onClick={() => setPreviewLessonId(null)}>
+              <i className="bi bi-x-lg" /> Exit preview
+            </button>
+          </header>
+          <div className="student-preview__content">
             <p className="lp-session-loading">Loading lesson…</p>
-          ) : teachLesson ? (
-            (teachLesson.blocks ?? []).map((block) => (
-              <section key={block.id} className="teach-mode__block">
-                <LessonBlockRenderer block={block} mode="teacher" />
-              </section>
-            ))
-          ) : (
-            <p className="lp-session-loading">Lesson not found.</p>
-          )}
+          </div>
         </div>
-      </div>
+      )
+    }
+
+    if (!previewLesson) {
+      return (
+        <div className="student-preview">
+          <header className="student-preview__header">
+            <p className="student-preview__eyebrow">Preview — student view</p>
+            <button type="button" className="lesson-builder__btn" onClick={() => setPreviewLessonId(null)}>
+              <i className="bi bi-x-lg" /> Exit preview
+            </button>
+          </header>
+          <div className="student-preview__content">
+            <p className="lp-session-loading">Lesson not found.</p>
+          </div>
+        </div>
+      )
+    }
+
+    const instructions = previewLesson.custom_student_instructions || previewLesson.student_instructions
+    return (
+      <StudentPreviewOverlay
+        title={previewLesson.title}
+        lessonGoal={previewLesson.lesson_goal}
+        shortDescription={previewLesson.short_description}
+        studentInstructions={instructions}
+        practiceAssignment={previewLesson.practice_assignment}
+        dueDate={previewLesson.due_date}
+        targetBpm={previewLesson.target_bpm}
+        status={previewLesson.status}
+        category={previewLesson.category}
+        skillLevel={previewLesson.skill_level ?? undefined}
+        estimatedDurationMinutes={previewLesson.estimated_duration_minutes ?? undefined}
+        authorName={displayName(userProfile) || 'Mark'}
+        blocks={previewLesson.blocks ?? []}
+        assignedLessonId={previewLesson.id}
+        studentName={student ? displayName(student) : null}
+        onExit={() => setPreviewLessonId(null)}
+      />
     )
   }
 
@@ -294,11 +320,11 @@ export default function LessonSessionWorkspace({
               <summary>{a.title}</summary>
               <div className="lp-session-lesson-card__body">
                 {(a.blocks ?? []).slice(0, 3).map((b) => (
-                  <LessonBlockRenderer key={b.id} block={b} mode="teacher" />
+                  <LessonBlockRenderer key={b.id} block={b} mode="student" readOnly />
                 ))}
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-                  <button type="button" className="lesson-builder__btn lesson-builder__btn--teach" onClick={() => setTeachLessonId(a.id)}>
-                    <i className="bi bi-bullseye" /> Teach this
+                  <button type="button" className="lesson-builder__btn lesson-builder__btn--preview" onClick={() => setPreviewLessonId(a.id)}>
+                    <i className="bi bi-eye" /> Student preview
                   </button>
                   <Link to={`/studio/lesson-planning/assigned/${a.id}`} className="lesson-builder__btn">
                     Customize
@@ -324,7 +350,7 @@ export default function LessonSessionWorkspace({
             <p className="lesson-builder__meta">
               {student ? displayName(student) : 'Select a student'}
               {scheduled ? ` · ${formatLessonTime(scheduled.starts_at)}` : ''}
-              {selectedStudentId && !scheduled ? ' · Teach & save session notes' : ''}
+              {selectedStudentId && !scheduled ? ' · Preview lessons & save session notes' : ''}
             </p>
           </div>
         </div>

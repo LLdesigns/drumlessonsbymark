@@ -6,14 +6,14 @@ export default function LessonSession() {
   const [searchParams] = useSearchParams()
   const studentId = searchParams.get('student')
   const from = searchParams.get('from')
-  const teachLessonId = searchParams.get('teach')
+  const previewLessonId = searchParams.get('preview') ?? searchParams.get('teach')
 
   return (
     <LessonSessionWorkspace
       scheduledId={scheduledId}
       initialStudentId={studentId}
       returnToStudentProfile={from === 'student' && !!studentId}
-      initialTeachLessonId={teachLessonId}
+      initialPreviewLessonId={previewLessonId}
     />
   )
 }

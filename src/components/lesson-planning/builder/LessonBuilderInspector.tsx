@@ -69,7 +69,7 @@ export default function LessonBuilderInspector({
           </button>
         </div>
       )}
-      <div className="lesson-builder__inspector-body">
+      <div className="lesson-builder__inspector-body lesson-builder__scroll">
         {variant === 'assigned' && assignedDetails?.studentName ? (
           <p className="lesson-builder__help-card" style={{ marginTop: 0, marginBottom: '0.85rem' }}>
             <strong>Student</strong>

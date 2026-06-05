@@ -202,6 +202,72 @@
   font-weight: 600;
 }
 
+.studio-student-profile__activity {
+  margin-bottom: 1rem;
+}
+
+.studio-activity-feed {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.studio-activity-feed__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--studio-bg);
+  border: 1px solid var(--studio-border);
+}
+
+.studio-activity-feed__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: rgba(167, 139, 250, 0.15);
+  color: var(--studio-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.studio-activity-feed__body {
+  min-width: 0;
+}
+
+.studio-activity-feed__label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.studio-activity-feed__detail {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--studio-text-muted);
+}
+
+.studio-activity-feed__lesson-link {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--studio-accent);
+}
+
+.studio-activity-feed__time {
+  font-size: 0.7rem;
+  color: var(--studio-text-muted);
+  white-space: nowrap;
+}
+
 .studio-student-profile__accordion summary {
   cursor: pointer;
   font-weight: 600;

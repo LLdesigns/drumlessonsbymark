@@ -198,7 +198,7 @@
   overflow: hidden;
 }
 
-.studio-floating-panel-root.studio-profile-menu__dropdown button {
+.studio-floating-panel-root.studio-profile-menu__dropdown:not(.studio-profile-menu__dropdown--account) button {
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -215,16 +215,57 @@
   white-space: nowrap;
 }
 
-.studio-floating-panel-root.studio-profile-menu__dropdown button i {
+.studio-floating-panel-root.studio-profile-menu__dropdown:not(.studio-profile-menu__dropdown--account) button i {
   width: 1.1rem;
   font-size: 1rem;
   color: var(--studio-accent);
   flex-shrink: 0;
 }
 
-.studio-floating-panel-root.studio-profile-menu__dropdown button:hover {
+.studio-floating-panel-root.studio-profile-menu__dropdown:not(.studio-profile-menu__dropdown--account) button:hover {
   background: var(--studio-accent-soft);
   color: var(--studio-text);
+}
+
+.studio-floating-panel-root.studio-profile-menu__dropdown--account {
+  min-width: 280px;
+  max-width: min(320px, calc(100vw - 1.5rem));
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.studio-floating-panel-root.studio-profile-menu__dropdown--account .studio-account-menu__actions button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--studio-text);
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.studio-floating-panel-root.studio-profile-menu__dropdown--account .studio-account-menu__actions button i {
+  width: 1.1rem;
+  font-size: 1rem;
+  color: var(--studio-accent);
+  flex-shrink: 0;
+}
+
+.studio-floating-panel-root.studio-profile-menu__dropdown--account .studio-account-menu__actions button:hover {
+  background: var(--studio-accent-soft);
+}
+
+.studio-floating-panel-root.studio-profile-menu__dropdown--account .studio-account-menu__notify-list {
+  max-height: min(220px, 40vh);
+  overflow-y: auto;
 }
 
 .studio-floating-panel-root.studio-notify-bell__panel {

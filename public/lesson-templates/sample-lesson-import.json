@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "_documentation": "Play It Pro lesson import v1. Give this file (or exportLessonDocument output) to an AI as a template. Rich text HTML classes: lesson-text-lead, lesson-text-callout, lesson-text-tip, lesson-text-warning, lesson-text-practice, lesson-text-highlight, lesson-text-center, lesson-text-steps (on ul). Bento grid: 12 columns; set canvas_layout on lesson and each block.",
+  "lesson": {
+    "title": "Basic Rock Groove — Quarter Notes",
+    "short_description": "Learn a foundational rock beat with kick on 1 and 3, snare on 2 and 4.",
+    "category": "Grooves",
+    "skill_level": "beginner",
+    "estimated_duration_minutes": 25,
+    "lesson_goal": "Play a steady quarter-note rock groove at 80 BPM with consistent timing.",
+    "student_instructions": "Watch the demo, practice slowly with the metronome, then record yourself at target tempo.",
+    "practice_assignment": "5 minutes daily at 70 BPM, increase by 5 BPM when comfortable.",
+    "tags": ["rock", "groove", "beginner"],
+    "canvas_layout": "bento"
+  },
+  "blocks": [
+    {
+      "ref": "intro",
+      "block_type": "text",
+      "display_title": "Introduction",
+      "canvas_layout": { "gridCol": 1, "gridRow": 1, "colSpan": 12 },
+      "content": {
+        "body": "<p class=\"lesson-text-lead\">This lesson introduces the classic <strong>rock backbeat</strong> — the foundation of countless songs.</p><p class=\"lesson-text-callout\">Keep your grip relaxed and let the sticks rebound naturally on the snare.</p>"
+      }
+    },
+    {
+      "ref": "demo-video",
+      "block_type": "video",
+      "display_title": "Demo video",
+      "canvas_layout": { "gridCol": 1, "gridRow": 2, "colSpan": 8 },
+      "content": {
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "title": "Rock groove demo"
+      }
+    },
+    {
+      "ref": "tempo-guide",
+      "block_type": "tempo",
+      "display_title": "Tempo ladder",
+      "canvas_layout": { "gridCol": 9, "gridRow": 2, "colSpan": 4 },
+      "content": {
+        "starting_bpm": 60,
+        "target_bpm": 90,
+        "minutes_per_step": 3,
+        "notes": "Increase 5 BPM when you can play 4 clean bars."
+      }
+    },
+    {
+      "ref": "groove-sequencer",
+      "block_type": "sequencer",
+      "display_title": "Practice groove",
+      "canvas_layout": { "gridCol": 1, "gridRow": 3, "colSpan": 12 },
+      "content": {
+        "beats_per_measure": 4,
+        "steps_per_beat": 4,
+        "playback_bpm": 80,
+        "caption": "Kick on 1 & 3, snare on 2 & 4",
+        "measures": [
+          {
+            "steps": [
+              { "kick": true },
+              {},
+              { "snare": true },
+              {},
+              { "kick": true },
+              {},
+              { "snare": true },
+              {},
+              { "hihat": true },
+              { "hihat": true },
+              { "hihat": true },
+              { "hihat": true },
+              { "hihat": true },
+              { "hihat": true },
+              { "hihat": true },
+              { "hihat": true }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "ref": "practice-checklist",
+      "block_type": "checklist",
+      "display_title": "Practice tasks",
+      "canvas_layout": { "gridCol": 1, "gridRow": 4, "colSpan": 6 },
+      "content": {
+        "instructions": "Complete each task before moving on.",
+        "items": [
+          {
+            "label": "Watch the demo video",
+            "task_type": "watch",
+            "linked_block_ref": "demo-video",
+            "auto_complete": true
+          },
+          {
+            "label": "Practice the groove in the sequencer",
+            "task_type": "practice",
+            "linked_block_ref": "groove-sequencer",
+            "auto_complete": true
+          },
+          {
+            "label": "Record yourself at 80 BPM",
+            "task_type": "record"
+          }
+        ]
+      }
+    },
+    {
+      "ref": "resource",
+      "block_type": "resource_link",
+      "display_title": "Further reading",
+      "canvas_layout": { "gridCol": 7, "gridRow": 4, "colSpan": 6 },
+      "content": {
+        "label": "Rock drumming basics (PDF)",
+        "url": "https://example.com/rock-basics.pdf",
+        "link_type": "pdf"
+      }
+    }
+  ]
+}

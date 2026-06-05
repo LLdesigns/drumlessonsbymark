@@ -1,0 +1,12 @@
+{
+  "id": "metronome_click",
+  "name": "Metronome Click",
+  "license": "Play It Pro (generated)",
+  "type": "drumkit",
+  "baseUrl": "/audio/metronome/",
+  "fallback": "synth",
+  "samples": {
+    "click": { "file": "click.wav", "midi": 37, "gain": 0.8 },
+    "accent": { "file": "accent.wav", "midi": 37, "gain": 1 }
+  }
+}

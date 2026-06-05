@@ -23,31 +23,76 @@ export async function fetchProfileByUserId(userId: string): Promise<UserProfile 
   return (data as UserProfile) ?? null
 }
 
+export type TeacherStudentListFilter = 'active' | 'archived'
+
 export async function fetchTeacherStudents(
   teacherId: string,
-  userRole?: UserRole | null
+  userRole?: UserRole | null,
+  options?: { filter?: TeacherStudentListFilter }
 ): Promise<StudioStudent[]> {
-  let studentIds: string[] = []
+  const filter = options?.filter ?? 'active'
+  type RelationRow = { student_id: string; status: string; archived_at: string | null }
+  let relations: RelationRow[] = []
 
   if (userRole === 'admin') {
-    const { data: roleRows, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'student')
+    if (filter === 'archived') {
+      const { data, error } = await supabase
+        .from('teacher_students')
+        .select('student_id, status, archived_at')
+        .eq('teacher_id', teacherId)
+        .eq('status', 'archived')
 
-    if (rolesError) throw rolesError
-    studentIds = roleRows?.map((r) => r.user_id) ?? []
+      if (error) throw error
+      relations = (data ?? []) as RelationRow[]
+    } else {
+      const { data: roleRows, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'student')
+
+      if (rolesError) throw rolesError
+      const allIds = roleRows?.map((r) => r.user_id) ?? []
+
+      const { data: archivedRels, error: archError } = await supabase
+        .from('teacher_students')
+        .select('student_id, status, archived_at')
+        .eq('teacher_id', teacherId)
+        .eq('status', 'archived')
+
+      if (archError) throw archError
+      const archivedIds = new Set((archivedRels ?? []).map((r) => r.student_id))
+
+      const { data: activeRels } = await supabase
+        .from('teacher_students')
+        .select('student_id, status, archived_at')
+        .eq('teacher_id', teacherId)
+        .eq('status', 'active')
+
+      const activeRelMap = new Map(
+        ((activeRels ?? []) as RelationRow[]).map((r) => [r.student_id, r])
+      )
+
+      relations = allIds
+        .filter((id) => !archivedIds.has(id))
+        .map((id) => activeRelMap.get(id) ?? { student_id: id, status: 'active', archived_at: null })
+    }
   } else {
-    const { data: relations, error: relError } = await supabase
+    let query = supabase
       .from('teacher_students')
-      .select('student_id')
+      .select('student_id, status, archived_at')
       .eq('teacher_id', teacherId)
 
-    if (relError) throw relError
-    studentIds = relations?.map((r) => r.student_id) ?? []
+    query = filter === 'archived' ? query.eq('status', 'archived') : query.eq('status', 'active')
+
+    const { data, error } = await query
+    if (error) throw error
+    relations = (data ?? []) as RelationRow[]
   }
 
+  const studentIds = relations.map((r) => r.student_id)
   if (studentIds.length === 0) return []
+
+  const relationByStudent = new Map(relations.map((r) => [r.student_id, r]))
 
   const { data: profiles, error: profileError } = await supabase
     .from('profiles')
@@ -65,15 +110,60 @@ export async function fetchTeacherStudents(
 
   const { data: studioProfiles } = await studioProfilesQuery
 
-  return (profiles ?? []).map((profile) => ({
-    ...profile,
-    studio_profile:
-      studioProfiles?.find(
-        (sp) =>
-          sp.student_id === profile.user_id &&
-          (userRole === 'admin' || sp.teacher_id === teacherId)
-      ) ?? null,
-  }))
+  return (profiles ?? []).map((profile) => {
+    const rel = relationByStudent.get(profile.user_id)
+    return {
+      ...profile,
+      studio_profile:
+        studioProfiles?.find(
+          (sp) =>
+            sp.student_id === profile.user_id &&
+            (userRole === 'admin' || sp.teacher_id === teacherId)
+        ) ?? null,
+      teacher_relation: rel
+        ? {
+            status: rel.status === 'archived' ? 'archived' : 'active',
+            archived_at: rel.archived_at,
+          }
+        : { status: 'active' as const, archived_at: null },
+    }
+  })
+}
+
+export async function setTeacherStudentArchived(
+  teacherId: string,
+  studentId: string,
+  archived: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from('teacher_students')
+    .update({
+      status: archived ? 'archived' : 'active',
+      archived_at: archived ? new Date().toISOString() : null,
+    })
+    .eq('teacher_id', teacherId)
+    .eq('student_id', studentId)
+
+  if (error) throw error
+}
+
+export async function fetchTeacherStudentRelation(
+  teacherId: string,
+  studentId: string
+): Promise<{ status: 'active' | 'archived'; archived_at: string | null } | null> {
+  const { data, error } = await supabase
+    .from('teacher_students')
+    .select('status, archived_at')
+    .eq('teacher_id', teacherId)
+    .eq('student_id', studentId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+  return {
+    status: data.status === 'archived' ? 'archived' : 'active',
+    archived_at: data.archived_at,
+  }
 }
 
 export async function upsertStudentProfile(

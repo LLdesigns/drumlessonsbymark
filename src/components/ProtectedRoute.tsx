@@ -5,6 +5,7 @@ import type { UserRole } from '../types/user'
 import { getDefaultPathForRole } from '../lib/permissions'
 import { getLoginPathForPathname, getLoginPathForRole } from '../lib/login-portal'
 import AuthProgressScreen from './AuthProgressScreen'
+import { STUDIO_BRAND_FULL } from '../lib/studio-brand'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -25,7 +26,7 @@ export default function ProtectedRoute({
     return (
       <AuthProgressScreen
         message="Checking your session…"
-        subtitle="Mark's Drum Studio"
+        subtitle={STUDIO_BRAND_FULL}
       />
     )
   }

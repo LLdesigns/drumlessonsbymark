@@ -1,4 +1,6 @@
 import { plainTextFromHtml } from './block-content-utils'
+import { notationHasNotes, normalizeDrumNotationContent } from './drum-notation'
+import { instrumentLabel, normalizeMusicNotationContent } from './music-notation'
 import { LESSON_BLOCK_TYPES } from './lesson-planning-constants'
 import type { LessonBlockContent, LessonBlockType } from '../types/lesson-planning'
 
@@ -24,7 +26,12 @@ export function getBlockTitle(block: EditableBlock): string {
     const body = plainTextFromHtml(String(c.body ?? '')).trim()
     if (body) return body.slice(0, 48) + (body.length > 48 ? '…' : '')
   }
-  if (block.block_type === 'notation_image') return String(c.caption || '') || 'Notation'
+  if (block.block_type === 'notation_image') return String(c.caption || '') || 'Image'
+  if (block.block_type === 'sequencer') return String(c.caption || '') || 'Sequencer'
+  if (block.block_type === 'notation') {
+    const title = String(c.title ?? c.displayTitle ?? '').trim()
+    return title || 'Notation'
+  }
   if (block.block_type === 'tempo') {
     const s = c.starting_bpm
     const t = c.target_bpm
@@ -42,13 +49,28 @@ export function getBlockPreview(block: EditableBlock): string {
   const c = block.content as unknown as Record<string, unknown>
   switch (block.block_type) {
     case 'text':
-      return plainTextFromHtml(String(c.body ?? '')).slice(0, 80) || 'Add your teaching notes…'
+      return plainTextFromHtml(String(c.body ?? '')).slice(0, 80) || 'Write your tutorial…'
     case 'video':
       return c.url ? 'Video linked' : 'Add a demo video'
     case 'audio':
       return c.url ? 'Audio track ready' : 'Add practice audio'
     case 'notation_image':
-      return c.url ? 'Notation uploaded' : 'Upload notation image'
+      return c.url ? 'Image uploaded' : 'Upload an image or PDF'
+    case 'sequencer': {
+      const n = normalizeDrumNotationContent(c)
+      const bars = n.measures.length
+      return notationHasNotes(n)
+        ? `${bars} bar${bars !== 1 ? 's' : ''} in sequencer`
+        : 'Build a groove in the sequencer'
+    }
+    case 'notation': {
+      const m = normalizeMusicNotationContent(c)
+      const notes = m.notationData.tracks[0]?.measures.reduce((n, meas) => n + meas.notes.length, 0) ?? 0
+      if (notes > 0) {
+        return `${instrumentLabel(m.instrument)} · ${m.timeSignature} · ${notes} note${notes !== 1 ? 's' : ''}`
+      }
+      return `${instrumentLabel(m.instrument)} · ${m.timeSignature} · Open editor to add notes`
+    }
     case 'tempo':
       return `Start ${c.starting_bpm ?? '—'} · Goal ${c.target_bpm ?? '—'} BPM`
     case 'rudiment':
@@ -80,4 +102,4 @@ export function duplicateBlock(block: EditableBlock): EditableBlock {
   }
 }
 
-export const BUILDER_ONBOARDING_KEY = 'mark-studio-builder-onboarding-v1'
+export const BUILDER_ONBOARDING_KEY = 'mark-studio-builder-help-seen-v1'

@@ -1,0 +1,17 @@
+{
+  "id": "practice_bass",
+  "name": "Practice Bass",
+  "license": "Generated teaching tones — replace with Karoryfer/VCSL CC0 in /audio/packs/practice_bass/",
+  "type": "melodic",
+  "baseUrl": "/audio/packs/practice_bass/",
+  "fallback": "synth",
+  "synth": {
+    "waveform": "square",
+    "gain": 0.12,
+    "semitoneOffset": -12
+  },
+  "root_notes": [
+    { "note": "E3", "midi": 52, "file": "bass_E3.wav" },
+    { "note": "A3", "midi": 57, "file": "bass_A3.wav" }
+  ]
+}

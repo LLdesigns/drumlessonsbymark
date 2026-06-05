@@ -5,31 +5,57 @@ import StudioPageHeader from '../../../components/studio/StudioPageHeader'
 import AddStudentModal from '../../../components/studio/AddStudentModal'
 import AddTeacherModal from '../../../components/studio/AddTeacherModal'
 import { useAuthStore } from '../../../store/auth'
-import { displayName, fetchTeacherStudents } from '../../../lib/studio-service'
+import {
+  displayName,
+  fetchTeacherStudents,
+  setTeacherStudentArchived,
+  type TeacherStudentListFilter,
+} from '../../../lib/studio-service'
 import type { StudioStudent } from '../../../types/studio'
 
 export default function MarkStudents() {
   const { user, userRole } = useAuthStore()
   const [students, setStudents] = useState<StudioStudent[]>([])
   const [loading, setLoading] = useState(true)
+  const [listFilter, setListFilter] = useState<TeacherStudentListFilter>('active')
   const [addOpen, setAddOpen] = useState(false)
   const [addTeacherOpen, setAddTeacherOpen] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
   const isAdmin = userRole === 'admin'
+  const showArchived = listFilter === 'archived'
 
   const loadStudents = useCallback(async () => {
     if (!user?.id) return
     setLoading(true)
     try {
-      const list = await fetchTeacherStudents(user.id, userRole)
+      const list = await fetchTeacherStudents(user.id, userRole, { filter: listFilter })
       setStudents(list)
     } finally {
       setLoading(false)
     }
-  }, [user?.id, userRole])
+  }, [user?.id, userRole, listFilter])
 
   useEffect(() => {
     loadStudents()
   }, [loadStudents])
+
+  const handleArchiveToggle = async (studentId: string, archive: boolean) => {
+    if (!user?.id) return
+    const label = archive ? 'archive' : 'restore'
+    if (!window.confirm(archive ? 'Archive this student? They stay off your active roster but can still sign in.' : 'Restore this student to your active roster?')) {
+      return
+    }
+    setBusyId(studentId)
+    try {
+      await setTeacherStudentArchived(user.id, studentId, archive)
+      await loadStudents()
+    } catch (e) {
+      console.error(e)
+      window.alert(`Could not ${label} student. If this is new, run TEACHER_STUDENTS_ARCHIVE.sql in Supabase.`)
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   return (
     <MarkStudioLayout>
@@ -85,34 +111,85 @@ export default function MarkStudents() {
         ) : null}
       </p>
 
+      <div
+        className="studio-segmented"
+        role="tablist"
+        aria-label="Student list"
+        style={{ marginBottom: '1.25rem', display: 'inline-flex', gap: '0.25rem' }}
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={listFilter === 'active'}
+          className={`studio-btn studio-btn--sm ${listFilter === 'active' ? 'studio-btn--primary' : 'studio-btn--ghost'}`}
+          onClick={() => setListFilter('active')}
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={listFilter === 'archived'}
+          className={`studio-btn studio-btn--sm ${listFilter === 'archived' ? 'studio-btn--primary' : 'studio-btn--ghost'}`}
+          onClick={() => setListFilter('archived')}
+        >
+          Archived
+        </button>
+      </div>
+
       {loading ? (
         <p className="studio-subtext">Loading students…</p>
       ) : students.length === 0 ? (
         <div className="studio-card studio-empty" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
           <i
-            className="bi bi-people"
+            className={`bi ${showArchived ? 'bi-archive' : 'bi-people'}`}
             style={{ fontSize: '2.5rem', color: 'var(--studio-accent)', marginBottom: '1rem' }}
             aria-hidden
           />
           <p className="studio-journal" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
-            No students yet. Add your first student to start scheduling lessons and sharing practice.
+            {showArchived
+              ? 'No archived students. Archived students are hidden from your active roster but keep their account and lesson history.'
+              : 'No students yet. Add your first student to start scheduling lessons and sharing practice.'}
           </p>
-          <button type="button" className="studio-btn studio-btn--primary" onClick={() => setAddOpen(true)}>
-            <i className="bi bi-person-plus" /> Add your first student
-          </button>
+          {!showArchived ? (
+            <button type="button" className="studio-btn studio-btn--primary" onClick={() => setAddOpen(true)}>
+              <i className="bi bi-person-plus" /> Add your first student
+            </button>
+          ) : null}
         </div>
       ) : (
         <div
           className="studio-card-grid"
         >
           {students.map((student) => (
-            <Link
-              key={student.user_id}
-              to={`/studio/students/${student.user_id}`}
-              style={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              <article className="studio-card" style={{ height: '100%' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <article key={student.user_id} className="studio-card" style={{ height: '100%', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 1 }}>
+                {showArchived ? (
+                  <button
+                    type="button"
+                    className="studio-btn studio-btn--ghost studio-btn--sm"
+                    disabled={busyId === student.user_id}
+                    onClick={() => handleArchiveToggle(student.user_id, false)}
+                  >
+                    <i className="bi bi-arrow-counterclockwise" /> Restore
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="studio-btn studio-btn--ghost studio-btn--sm"
+                    disabled={busyId === student.user_id}
+                    title="Archive student"
+                    onClick={() => handleArchiveToggle(student.user_id, true)}
+                  >
+                    <i className="bi bi-archive" />
+                  </button>
+                )}
+              </div>
+              <Link
+                to={`/studio/students/${student.user_id}`}
+                style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+              >
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingRight: '2.5rem' }}>
                   <div
                     style={{
                       width: 56,
@@ -166,8 +243,8 @@ export default function MarkStudents() {
                     ♫ {student.studio_profile.favorite_music}
                   </p>
                 ) : null}
-              </article>
-            </Link>
+              </Link>
+            </article>
           ))}
         </div>
       )}

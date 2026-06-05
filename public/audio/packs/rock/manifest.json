@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "name": "Rock Band Pack",
+  "license": "CC0 (v2 placeholder)",
+  "packBaseUrl": "/audio/packs/rock/",
+  "packs": []
+}

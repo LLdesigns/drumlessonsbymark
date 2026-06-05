@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../store/auth'
+import { Link, useLocation } from 'react-router-dom'
 import StudioProfileMenu from './StudioProfileMenu'
-import StudioNotificationBell from './StudioNotificationBell'
 import StudioPortalChrome from './StudioPortalChrome'
+import { STUDIO_BRAND_LINE1, studioPortalLabel } from '../../lib/studio-brand'
+import { prefetchRoute } from '../../lib/route-prefetch'
 import '../../lib/studio-tokens.css'
 import '../../lib/studio-pwa.css'
 import '../../lib/studio-responsive.css'
@@ -26,21 +26,19 @@ function SidebarAccount({
   profileRoleLabel,
   variant,
   sidebarOpen,
-  showSignOut,
 }: {
   portal: 'student' | 'studio'
   profileRoleLabel?: string
   variant: 'teacher' | 'student'
   sidebarOpen: boolean
-  showSignOut: boolean
 }) {
   return (
     <div className={`studio-sidebar-account ${sidebarOpen ? '' : 'studio-sidebar-account--collapsed'}`}>
-      <StudioNotificationBell portal={portal} placement="sidebar" />
       <StudioProfileMenu
         portal={portal}
         roleLabel={profileRoleLabel ?? (variant === 'teacher' ? 'Teacher' : 'Student')}
-        showSignOut={showSignOut}
+        showSignOut
+        includeNotifications
         placement="sidebar"
         collapsed={!sidebarOpen}
       />
@@ -55,14 +53,7 @@ export default function StudioShell({
   profileRoleLabel,
 }: StudioShellProps) {
   const location = useLocation()
-  const navigate = useNavigate()
-  const { signOut } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-
-  const handleSignOut = async () => {
-    await signOut()
-    navigate('/', { replace: true })
-  }
 
   const portal = variant === 'teacher' ? 'studio' : 'student'
 
@@ -76,8 +67,8 @@ export default function StudioShell({
         <div className="studio-brand">
           {sidebarOpen ? (
             <>
-              <p className="studio-brand__mark">MARK&apos;S</p>
-              <h2 className="studio-brand__title">DRUM STUDIO</h2>
+              <p className="studio-brand__mark">{STUDIO_BRAND_LINE1}</p>
+              <h2 className="studio-brand__title">{studioPortalLabel(variant)}</h2>
             </>
           ) : (
             <p className="studio-brand__title" style={{ fontSize: '1.25rem', textAlign: 'center' }}>
@@ -106,6 +97,8 @@ export default function StudioShell({
                 to={item.path}
                 className={`studio-nav__link ${isActive ? 'studio-nav__link--active' : ''}`}
                 title={!sidebarOpen ? item.label : undefined}
+                onMouseEnter={() => prefetchRoute(item.path)}
+                onFocus={() => prefetchRoute(item.path)}
               >
                 <i className={`bi ${item.icon}`} />
                 {sidebarOpen && <span>{item.label}</span>}
@@ -115,43 +108,21 @@ export default function StudioShell({
         </nav>
 
         <div className="studio-sidebar__bottom">
-          {variant === 'teacher' ? (
-            <>
-              {sidebarOpen ? (
-                <div className="studio-sidebar__quote">
-                  <p>Great playing comes from consistent practice.</p>
-                  <cite>— Mark</cite>
-                </div>
-              ) : null}
-              <div className="studio-sidebar__visual" aria-hidden="true" title="Mark's Drum Studio" />
-            </>
-          ) : null}
-
           <SidebarAccount
             portal={portal}
             profileRoleLabel={profileRoleLabel}
             variant={variant}
             sidebarOpen={sidebarOpen}
-            showSignOut={variant === 'teacher'}
           />
-
-          {variant === 'student' ? (
-            <div className="studio-sidebar__footer">
-              <button type="button" className="studio-logout" onClick={handleSignOut}>
-                <i className="bi bi-box-arrow-right" />
-                {sidebarOpen && <span>Logout</span>}
-              </button>
-            </div>
-          ) : null}
         </div>
       </aside>
 
-      <div className="studio-mobile-util" aria-label="Account and notifications">
-        <StudioNotificationBell portal={portal} placement="mobile" />
+      <div className="studio-mobile-util" aria-label="Account menu">
         <StudioProfileMenu
           portal={portal}
           roleLabel={profileRoleLabel ?? (variant === 'teacher' ? 'Teacher' : 'Student')}
           showSignOut
+          includeNotifications
           placement="mobile"
           collapsed
         />
@@ -171,6 +142,8 @@ export default function StudioShell({
               key={item.path}
               to={item.path}
               className={`studio-mobile-nav__link ${isActive ? 'studio-mobile-nav__link--active' : ''}`}
+              onTouchStart={() => prefetchRoute(item.path)}
+              onFocus={() => prefetchRoute(item.path)}
             >
               <i className={`bi ${item.icon}`} />
               <span>{item.label}</span>

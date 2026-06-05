@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS lesson_template_blocks (
   template_id UUID NOT NULL REFERENCES lesson_templates(id) ON DELETE CASCADE,
   sort_order INTEGER NOT NULL DEFAULT 0,
   block_type TEXT NOT NULL CHECK (block_type IN (
-    'text', 'notation_image', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
+    'text', 'notation_image', 'sequencer', 'notation', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
   )),
   content JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS assigned_lesson_blocks (
   source_block_id UUID REFERENCES lesson_template_blocks(id) ON DELETE SET NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   block_type TEXT NOT NULL CHECK (block_type IN (
-    'text', 'notation_image', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
+    'text', 'notation_image', 'sequencer', 'notation', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
   )),
   content JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -408,6 +408,26 @@ DROP POLICY IF EXISTS "Users delete own studio media" ON storage.objects;
 CREATE POLICY "Users delete own studio media"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'studio-media' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Block types — keep in sync with src/types/lesson-planning.ts (LessonBlockType).
+-- Safe to re-run: updates constraints on existing databases that predate sequencer/notation blocks.
+ALTER TABLE lesson_template_blocks
+  DROP CONSTRAINT IF EXISTS lesson_template_blocks_block_type_check;
+
+ALTER TABLE lesson_template_blocks
+  ADD CONSTRAINT lesson_template_blocks_block_type_check
+  CHECK (block_type IN (
+    'text', 'notation_image', 'sequencer', 'notation', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
+  ));
+
+ALTER TABLE assigned_lesson_blocks
+  DROP CONSTRAINT IF EXISTS assigned_lesson_blocks_block_type_check;
+
+ALTER TABLE assigned_lesson_blocks
+  ADD CONSTRAINT assigned_lesson_blocks_block_type_check
+  CHECK (block_type IN (
+    'text', 'notation_image', 'sequencer', 'notation', 'video', 'audio', 'tempo', 'rudiment', 'checklist', 'resource_link'
+  ));
 
 -- Verify
 SELECT 'lesson_templates' AS table_name, COUNT(*) AS row_count FROM lesson_templates

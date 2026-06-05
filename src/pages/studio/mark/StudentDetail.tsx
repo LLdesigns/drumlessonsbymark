@@ -5,13 +5,22 @@ import StudioPageHeader from '../../../components/studio/StudioPageHeader'
 import { useAuthStore } from '../../../store/auth'
 import { supabase } from '../../../lib/supabase'
 import { statusLabel } from '../../../lib/lesson-planning-constants'
-import { fetchAssignedLessons, fetchTaskCompletionsForStudent } from '../../../lib/lesson-planning-service'
+import {
+  fetchAssignedLessonsWithBlocks,
+  fetchTaskCompletionsForStudent,
+  fetchTeacherStudentActivity,
+} from '../../../lib/lesson-planning-service'
+import { computeLessonTaskProgress } from '../../../lib/practice-task-utils'
+import StudentActivityFeed from '../../../components/lesson-planning/StudentActivityFeed'
 import type { PracticeTaskCompletion } from '../../../types/lesson-planning'
+import type { StudentActivityEvent } from '../../../types/lesson-planning'
 import {
   displayName,
   fetchLessonNotes,
   fetchPracticeAssignments,
   fetchScheduledLessons,
+  fetchTeacherStudentRelation,
+  setTeacherStudentArchived,
   SKILL_LEVELS,
   upsertStudentProfile,
 } from '../../../lib/studio-service'
@@ -30,34 +39,40 @@ export default function MarkStudentDetail() {
   const [assignments, setAssignments] = useState<PracticeAssignment[]>([])
   const [assignedLessons, setAssignedLessons] = useState<AssignedLesson[]>([])
   const [taskCompletions, setTaskCompletions] = useState<PracticeTaskCompletion[]>([])
+  const [activityEvents, setActivityEvents] = useState<StudentActivityEvent[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [relationStatus, setRelationStatus] = useState<'active' | 'archived'>('active')
+  const [archiving, setArchiving] = useState(false)
 
   useEffect(() => {
     if (!studentId || !user?.id) return
 
     const load = async () => {
       setLoading(true)
-      const [pRes, spRes, allLessons, allNotes, allAssignments, assigned, completions] = await Promise.all([
+      const [pRes, spRes, rel, allLessons, allNotes, allAssignments, assigned, completions, activity] =
+        await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', studentId).single(),
         supabase.from('student_profiles').select('*').eq('student_id', studentId).maybeSingle(),
+        fetchTeacherStudentRelation(user.id, studentId),
         fetchScheduledLessons(user.id, 'teacher'),
         fetchLessonNotes(user.id, 'teacher'),
         fetchPracticeAssignments(user.id, 'teacher'),
-        fetchAssignedLessons(user.id, 'teacher', { studentId }),
+        fetchAssignedLessonsWithBlocks(user.id, studentId),
         fetchTaskCompletionsForStudent(user.id, studentId),
+        fetchTeacherStudentActivity(user.id, studentId, 40),
       ])
 
       setProfile(pRes.data ?? null)
+      setRelationStatus(rel?.status ?? 'active')
       if (spRes.data) setStudioProfile(spRes.data)
       setLessons(allLessons.filter((l) => l.student_id === studentId))
       setNotes(allNotes.filter((n) => n.student_id === studentId))
       setAssignments(allAssignments.filter((a) => a.student_id === studentId))
-      setAssignedLessons(
-        assigned.filter((l) => l.status !== 'archived').sort((a, b) => a.title.localeCompare(b.title))
-      )
+      setAssignedLessons(assigned.sort((a, b) => a.title.localeCompare(b.title)))
       setTaskCompletions(completions)
+      setActivityEvents(activity)
       setLoading(false)
     }
 
@@ -82,6 +97,31 @@ export default function MarkStudentDetail() {
 
   const studentName = profile ? displayName(profile) : 'Student'
   const sessionLogUrl = `/studio/lesson-planning/session/new?student=${studentId}&from=student`
+  const isArchived = relationStatus === 'archived'
+
+  const handleArchiveToggle = async () => {
+    if (!user?.id || !studentId) return
+    const archive = !isArchived
+    if (
+      !window.confirm(
+        archive
+          ? 'Archive this student? They are removed from your active roster but can still sign in.'
+          : 'Restore this student to your active roster?'
+      )
+    ) {
+      return
+    }
+    setArchiving(true)
+    try {
+      await setTeacherStudentArchived(user.id, studentId, archive)
+      setRelationStatus(archive ? 'archived' : 'active')
+    } catch (e) {
+      console.error(e)
+      window.alert('Could not update archive status. Run TEACHER_STUDENTS_ARCHIVE.sql in Supabase if needed.')
+    } finally {
+      setArchiving(false)
+    }
+  }
 
   if (loading || !profile) {
     return (
@@ -97,11 +137,38 @@ export default function MarkStudentDetail() {
         title={studentName}
         subtitle="Lessons they're working on (assigned or self-started) and teaching notes"
         action={
-          <Link to="/studio/students" className="studio-btn studio-btn--ghost">
-            ← Students
-          </Link>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className="studio-btn studio-btn--secondary"
+              disabled={archiving}
+              onClick={handleArchiveToggle}
+            >
+              <i className={`bi ${isArchived ? 'bi-arrow-counterclockwise' : 'bi-archive'}`} />
+              {isArchived ? 'Restore' : 'Archive'}
+            </button>
+            <Link to="/studio/students" className="studio-btn studio-btn--ghost">
+              ← Students
+            </Link>
+          </div>
         }
       />
+
+      {isArchived ? (
+        <p
+          className="studio-subtext"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.65rem 1rem',
+            borderRadius: 8,
+            background: 'rgba(255, 193, 7, 0.12)',
+            border: '1px solid rgba(255, 193, 7, 0.35)',
+          }}
+        >
+          <i className="bi bi-archive" /> This student is archived — hidden from your active list. Restore them to
+          assign new lessons from the library.
+        </p>
+      ) : null}
 
       <div className="studio-student-profile">
         <section className="studio-card studio-student-profile__lessons">
@@ -128,7 +195,8 @@ export default function MarkStudentDetail() {
           ) : (
             <ul className="studio-student-lesson-list">
               {assignedLessons.map((lesson) => {
-                const tasksDone = taskCompletions.filter((c) => c.assigned_lesson_id === lesson.id).length
+                const lessonCompletions = taskCompletions.filter((c) => c.assigned_lesson_id === lesson.id)
+                const taskProgress = computeLessonTaskProgress(lesson.blocks ?? [], lessonCompletions)
                 return (
                 <li key={lesson.id} className="studio-student-lesson-item">
                   <div className="studio-student-lesson-item__main">
@@ -139,7 +207,11 @@ export default function MarkStudentDetail() {
                       {lesson.due_date
                         ? ` · Due ${new Date(lesson.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
                         : ''}
-                      {tasksDone > 0 ? ` · ${tasksDone} task${tasksDone === 1 ? '' : 's'} done` : ''}
+                      {taskProgress.total > 0
+                        ? ` · Tasks ${taskProgress.done}/${taskProgress.total}`
+                        : lessonCompletions.length > 0
+                          ? ` · ${lessonCompletions.length} task${lessonCompletions.length === 1 ? '' : 's'} done`
+                          : ''}
                     </p>
                   </div>
                   <div className="studio-student-lesson-item__actions">
@@ -150,10 +222,10 @@ export default function MarkStudentDetail() {
                       Open
                     </Link>
                     <Link
-                      to={`${sessionLogUrl}&teach=${lesson.id}`}
+                      to={`${sessionLogUrl}&preview=${lesson.id}`}
                       className="studio-btn studio-btn--sm"
                     >
-                      <i className="bi bi-bullseye" /> Teach
+                      <i className="bi bi-eye" /> Preview
                     </Link>
                   </div>
                 </li>
@@ -165,6 +237,15 @@ export default function MarkStudentDetail() {
             <Link to={sessionLogUrl}>Log session notes</Link> after a lesson (what you covered, homework,
             next focus).
           </p>
+        </section>
+
+        <section className="studio-card studio-student-profile__activity">
+          <h2 className="studio-student-profile__section-title">Recent practice activity</h2>
+          <p className="studio-subtext" style={{ marginTop: 0 }}>
+            Logged when {studentName} opens lessons, completes tasks, watches videos, uses the sequencer, or uploads
+            recordings.
+          </p>
+          <StudentActivityFeed events={activityEvents} lessons={assignedLessons} />
         </section>
 
         <details className="studio-card studio-student-profile__accordion">

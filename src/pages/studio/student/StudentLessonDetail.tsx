@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import StudentStudioLayout from '../../../components/layout/StudentStudioLayout'
-import LessonBlockRenderer from '../../../components/lesson-planning/LessonBlockRenderer'
+import LessonStudentPracticeView from '../../../components/lesson-planning/LessonStudentPracticeView'
 import LessonAssignedNotesPanel from '../../../components/lesson-planning/LessonAssignedNotesPanel'
-import { getBlockMeta, getBlockTitle } from '../../../lib/lesson-builder-utils'
-import { statusLabel } from '../../../lib/lesson-planning-constants'
 import {
   fetchAssignedLesson,
   addStudentPracticeNote,
+  fetchBlockProgress,
   fetchTaskCompletions,
   markAssignedLessonComplete,
+  markAssignedLessonNeedsReview,
   toggleTaskCompletion,
   updateAssignedLesson,
+  upsertBlockProgress,
 } from '../../../lib/lesson-planning-service'
 import { uploadStudioMedia } from '../../../lib/studio-media-service'
 import { displayName, getStudentTeacherId } from '../../../lib/studio-service'
@@ -19,8 +20,19 @@ import {
   notifyPracticeMediaUploaded,
   notifyPracticeTaskCompleted,
 } from '../../../lib/notify-studio'
+import {
+  computeLessonTaskProgress,
+  findAutoCompleteTasksForBlock,
+  findRecordTasksForLesson,
+} from '../../../lib/practice-task-utils'
+import { trackStudioEvent } from '../../../lib/studio-analytics'
 import { useAuthStore } from '../../../store/auth'
-import type { AssignedLesson, PracticeTaskCompletion } from '../../../types/lesson-planning'
+import type {
+  AssignedLesson,
+  BlockProgressKind,
+  PracticeTaskCompletion,
+  StudentBlockProgress,
+} from '../../../types/lesson-planning'
 import type { ChecklistBlockContent } from '../../../types/lesson-planning'
 import '../../../lib/lesson-planning.css'
 
@@ -30,19 +42,26 @@ export default function StudentLessonDetail() {
   const { user, userProfile } = useAuthStore()
   const [lesson, setLesson] = useState<AssignedLesson | null>(null)
   const [completions, setCompletions] = useState<PracticeTaskCompletion[]>([])
+  const [blockProgress, setBlockProgress] = useState<StudentBlockProgress[]>([])
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [completing, setCompleting] = useState(false)
+  const openedRef = useRef(false)
 
   const reload = async () => {
     if (!id || !user?.id) return
-    const [l, c] = await Promise.all([fetchAssignedLesson(id), fetchTaskCompletions(id)])
+    const [l, c, p] = await Promise.all([
+      fetchAssignedLesson(id),
+      fetchTaskCompletions(id),
+      fetchBlockProgress(id),
+    ])
     if (!l || l.student_id !== user.id) {
       navigate('/student/lessons')
       return
     }
     setLesson(l)
     setCompletions(c)
+    setBlockProgress(p)
     if (l.status === 'not_started') {
       void updateAssignedLesson(id, { status: 'in_progress' })
     }
@@ -51,6 +70,91 @@ export default function StudentLessonDetail() {
   useEffect(() => {
     reload()
   }, [id, user?.id])
+
+  useEffect(() => {
+    if (!id || !user?.id || !lesson || openedRef.current) return
+    openedRef.current = true
+    void trackStudioEvent({
+      studentId: user.id,
+      eventName: 'lesson_opened',
+      assignedLessonId: id,
+      properties: { lesson_title: lesson.title, status: lesson.status },
+    })
+  }, [id, user?.id, lesson])
+
+  const scrollToBlock = useCallback((blockId: string) => {
+    document.getElementById(`lesson-block-${blockId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const maybeMarkNeedsReview = useCallback(
+    async (nextCompletions: PracticeTaskCompletion[]) => {
+      if (!id || !lesson?.blocks?.length) return
+      const progress = computeLessonTaskProgress(lesson.blocks, nextCompletions)
+      if (progress.total > 0 && progress.done === progress.total && lesson.status !== 'completed' && lesson.status !== 'needs_review') {
+        await markAssignedLessonNeedsReview(id)
+        setLesson((prev) => (prev ? { ...prev, status: 'needs_review' } : prev))
+      }
+    },
+    [id, lesson]
+  )
+
+  const completeTask = useCallback(
+    async (
+      blockId: string,
+      itemId: string,
+      options?: { auto?: boolean; skipNotify?: boolean }
+    ) => {
+      if (!id || !user?.id || !lesson) return false
+
+      const block = lesson.blocks?.find((b) => b.id === blockId)
+      const items = (block?.content as ChecklistBlockContent)?.items ?? []
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return false
+
+      if (completions.some((c) => c.block_id === blockId && c.item_id === itemId)) return true
+
+      await toggleTaskCompletion({
+        assigned_lesson_id: id,
+        block_id: blockId,
+        item_id: itemId,
+        student_id: user.id,
+        completed: true,
+      })
+
+      await trackStudioEvent({
+        studentId: user.id,
+        eventName: 'checklist_item_completed',
+        assignedLessonId: id,
+        blockId,
+        itemId,
+        properties: {
+          task_label: item.label,
+          lesson_title: lesson.title,
+          auto: options?.auto ?? false,
+          task_type: item.task_type,
+        },
+      })
+
+      if (!options?.skipNotify) {
+        const teacherId = await getStudentTeacherId(user.id)
+        if (teacherId) {
+          await notifyPracticeTaskCompleted(
+            teacherId,
+            displayName(userProfile),
+            item.label,
+            lesson.title,
+            { assigned_lesson_id: id, block_id: blockId, item_id: itemId, auto: options?.auto }
+          )
+        }
+      }
+
+      const c = await fetchTaskCompletions(id)
+      setCompletions(c)
+      await maybeMarkNeedsReview(c)
+      return true
+    },
+    [id, user?.id, lesson, completions, userProfile, maybeMarkNeedsReview]
+  )
 
   const handleToggleTask = async (blockId: string, itemId: string, completed: boolean) => {
     if (!id || !user?.id || !lesson) return
@@ -92,20 +196,98 @@ export default function StudentLessonDetail() {
         completed,
       })
 
+      await trackStudioEvent({
+        studentId: user.id,
+        eventName: completed ? 'checklist_item_completed' : 'checklist_item_unchecked',
+        assignedLessonId: id,
+        blockId,
+        itemId,
+        properties: { task_label: item?.label, lesson_title: lesson.title },
+      })
+
       if (completed && item) {
         const teacherId = await getStudentTeacherId(user.id)
         if (teacherId) {
-          await notifyPracticeTaskCompleted(teacherId, displayName(userProfile), item.label, lesson.title)
+          await notifyPracticeTaskCompleted(
+            teacherId,
+            displayName(userProfile),
+            item.label,
+            lesson.title,
+            { assigned_lesson_id: id, block_id: blockId, item_id: itemId }
+          )
         }
       }
+
       const c = await fetchTaskCompletions(id)
       setCompletions(c)
+      if (completed) await maybeMarkNeedsReview(c)
     } catch {
       setCompletions(previous)
     } finally {
       setTogglingTaskId(null)
     }
   }
+
+  const handleBlockProgress = useCallback(
+    async (blockId: string, kind: BlockProgressKind, payload?: Record<string, unknown>) => {
+      if (!id || !user?.id || !lesson?.blocks?.length) return
+
+      const already = blockProgress.some(
+        (p) => p.block_id === blockId && p.student_id === user.id && p.progress_kind === kind
+      )
+      if (already) return
+
+      const row = await upsertBlockProgress({
+        assigned_lesson_id: id,
+        block_id: blockId,
+        student_id: user.id,
+        progress_kind: kind,
+        payload,
+      })
+
+      const eventName =
+        kind === 'played'
+          ? payload?.source === 'notation_playback'
+            ? 'notation_playback_started'
+            : 'block_played'
+          : 'block_viewed'
+
+      await trackStudioEvent({
+        studentId: user.id,
+        eventName,
+        assignedLessonId: id,
+        blockId,
+        properties: payload ?? {},
+      })
+
+      const nextProgress = row
+        ? [...blockProgress.filter((p) => !(p.block_id === blockId && p.progress_kind === kind)), row]
+        : [
+            ...blockProgress,
+            {
+              id: `local-${blockId}-${kind}`,
+              assigned_lesson_id: id,
+              block_id: blockId,
+              student_id: user.id,
+              progress_kind: kind,
+              payload,
+              completed_at: new Date().toISOString(),
+            },
+          ]
+      setBlockProgress(nextProgress)
+
+      const autoTasks = findAutoCompleteTasksForBlock(
+        lesson.blocks,
+        blockId,
+        nextProgress,
+        completions
+      )
+      for (const { checklistBlockId, item } of autoTasks) {
+        await completeTask(checklistBlockId, item.id, { auto: true })
+      }
+    },
+    [id, user?.id, lesson, blockProgress, completions, completeTask]
+  )
 
   const handleMediaUpload = async (file: File) => {
     if (!user?.id || !id || !lesson) return
@@ -118,9 +300,20 @@ export default function StudentLessonDetail() {
         body: `Uploaded practice media: ${file.name}`,
         media_url: url,
       })
+      await trackStudioEvent({
+        studentId: user.id,
+        eventName: 'practice_media_uploaded',
+        assignedLessonId: id,
+        properties: { file_name: file.name, lesson_title: lesson.title },
+      })
       const teacherId = await getStudentTeacherId(user.id)
       if (teacherId) {
         await notifyPracticeMediaUploaded(teacherId, displayName(userProfile), lesson.title)
+      }
+
+      const recordTasks = findRecordTasksForLesson(lesson.blocks ?? [], completions)
+      for (const { checklistBlockId, item } of recordTasks) {
+        await completeTask(checklistBlockId, item.id, { auto: true })
       }
     } finally {
       setUploading(false)
@@ -140,53 +333,31 @@ export default function StudentLessonDetail() {
   return (
     <StudentStudioLayout>
       <div className="lp-hub lp-practice-flow">
-        <header className="lp-page-header">
-          <div>
-            <Link to="/student/lessons" className="lp-btn lp-btn--ghost lp-btn--sm" style={{ marginBottom: '0.5rem' }}>
-              <i className="bi bi-arrow-left" /> All lessons
-            </Link>
-            <h1>{lesson.title}</h1>
-            {lesson.lesson_goal ? <p>{lesson.lesson_goal}</p> : null}
-          </div>
-          <span className={`lp-badge lp-badge--status-${lesson.status}`}>{statusLabel(lesson.status)}</span>
-        </header>
+        <Link to="/student/lessons" className="lp-btn lp-btn--ghost lp-btn--sm" style={{ marginBottom: '1rem', display: 'inline-flex' }}>
+          <i className="bi bi-arrow-left" /> All lessons
+        </Link>
 
-        <div className="lp-practice-hero">
-          {lesson.due_date ? <p className="lp-card__meta" style={{ margin: '0 0 0.5rem' }}>Due {new Date(lesson.due_date).toLocaleDateString()}</p> : null}
-          {instructions ? <p style={{ margin: 0, lineHeight: 1.55 }}>{instructions}</p> : null}
-          {lesson.practice_assignment ? (
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(167, 139, 250, 0.2)' }}>
-              <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--lp-accent)', margin: '0 0 0.35rem' }}>Practice goal</p>
-              <p style={{ margin: 0 }}>{lesson.practice_assignment}</p>
-            </div>
-          ) : null}
-          {lesson.target_bpm ? <p className="lp-card__meta" style={{ marginTop: '0.75rem', marginBottom: 0 }}>Target tempo: {lesson.target_bpm} BPM</p> : null}
-        </div>
-
-        {(lesson.blocks ?? []).length === 0 ? (
-          <div className="lp-empty lp-card">
-            <p style={{ margin: 0 }}>Lesson content coming soon.</p>
-          </div>
-        ) : (
-          (lesson.blocks ?? []).map((block) => {
-            const meta = getBlockMeta(block.block_type)
-            return (
-              <article key={block.id} className="lp-practice-block">
-                <p className="lp-practice-block__label">
-                  <i className={`bi ${meta?.icon ?? 'bi-square'}`} style={{ marginRight: '0.35rem' }} />
-                  {getBlockTitle({ id: block.id, block_type: block.block_type, content: block.content, sort_order: block.sort_order })}
-                </p>
-                <LessonBlockRenderer
-                  block={block}
-                  mode="student"
-                  completions={completions}
-                  onToggleTask={handleToggleTask}
-                  togglingTaskId={togglingTaskId}
-                />
-              </article>
-            )
-          })
-        )}
+        <LessonStudentPracticeView
+          title={lesson.title}
+          lessonGoal={lesson.lesson_goal}
+          shortDescription={lesson.short_description}
+          studentInstructions={instructions}
+          practiceAssignment={lesson.practice_assignment}
+          dueDate={lesson.due_date}
+          targetBpm={lesson.target_bpm}
+          status={lesson.status}
+          category={lesson.category}
+          skillLevel={lesson.skill_level ?? undefined}
+          estimatedDurationMinutes={lesson.estimated_duration_minutes ?? undefined}
+          authorName="Mark"
+          blocks={lesson.blocks ?? []}
+          completions={completions}
+          blockProgress={blockProgress}
+          onToggleTask={handleToggleTask}
+          onScrollToBlock={scrollToBlock}
+          onBlockProgress={handleBlockProgress}
+          togglingTaskId={togglingTaskId}
+        />
 
         {user?.id ? (
           <LessonAssignedNotesPanel
@@ -205,10 +376,16 @@ export default function StudentLessonDetail() {
               className="lp-btn lp-btn--primary"
               disabled={completing}
               onClick={async () => {
-                if (!id) return
+                if (!id || !user?.id) return
                 setCompleting(true)
                 try {
                   await markAssignedLessonComplete(id)
+                  await trackStudioEvent({
+                    studentId: user.id,
+                    eventName: 'lesson_completed',
+                    assignedLessonId: id,
+                    properties: { lesson_title: lesson.title },
+                  })
                   await reload()
                 } finally {
                   setCompleting(false)

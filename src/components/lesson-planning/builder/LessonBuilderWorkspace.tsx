@@ -8,6 +8,15 @@ import {
   skillLevelLabel,
 } from '../../../lib/lesson-planning-constants'
 import {
+  autoLayoutBentoBlocks,
+  layoutForBentoCell,
+  nextBentoPlacement,
+  prepareBlocksForSave,
+  readStoredCanvasView,
+  writeStoredCanvasView,
+  type CanvasViewMode,
+} from '../../../lib/lesson-builder-canvas-layout'
+import {
   BUILDER_ONBOARDING_KEY,
   duplicateBlock,
   getBlockMeta,
@@ -21,6 +30,7 @@ import LessonPlanningSchemaBanner from '../LessonPlanningSchemaBanner'
 import LessonBuilderDrawerBackdrop from './LessonBuilderDrawerBackdrop'
 import LessonBuilderPanelHead from './LessonBuilderPanelHead'
 import { useLessonBuilderDrawers } from '../../../hooks/useLessonBuilderDrawers'
+import { displayName } from '../../../lib/studio-service'
 import {
   createLessonTemplate,
   fetchLessonTemplate,
@@ -28,12 +38,13 @@ import {
   saveTemplateBlocks,
   updateLessonTemplate,
 } from '../../../lib/lesson-planning-service'
-import BlockPickerModal from './BlockPickerModal'
-import BuilderOnboarding from './BuilderOnboarding'
-import CanvasBlockCard from './CanvasBlockCard'
+import LessonBuilderHelp from './LessonBuilderHelp'
+import LessonBuilderOnboardingPrompt from './LessonBuilderOnboardingPrompt'
+import LessonBuilderCanvas from './LessonBuilderCanvas'
 import LessonBuilderInspector from './LessonBuilderInspector'
-import StarterTemplatePicker from './StarterTemplatePicker'
-import TeachModeView from './TeachModeView'
+import LessonJsonImportExport from './LessonJsonImportExport'
+import StudentPreviewOverlay from './StudentPreviewOverlay'
+import type { LessonImportResult } from '../../../lib/lesson-import-export'
 import '../../../lib/lesson-builder.css'
 
 interface LessonBuilderWorkspaceProps {
@@ -73,11 +84,10 @@ export default function LessonBuilderWorkspace({
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!isNew)
-  const [teachMode, setTeachMode] = useState(false)
-  const [showBlockPicker, setShowBlockPicker] = useState(false)
-  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null)
-  const [showStarterPicker, setShowStarterPicker] = useState(isNew)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [studentPreviewOpen, setStudentPreviewOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [helpFirstVisit, setHelpFirstVisit] = useState(false)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
   const {
     sidebarOpen,
     inspectorOpen,
@@ -92,6 +102,9 @@ export default function LessonBuilderWorkspace({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [canvasViewMode, setCanvasViewMode] = useState<CanvasViewMode>(() =>
+    readStoredCanvasView(templateId)
+  )
 
   const effectiveTemplateId = localTemplateId
 
@@ -102,10 +115,22 @@ export default function LessonBuilderWorkspace({
   }, [templateId])
 
   useEffect(() => {
-    if (!localStorage.getItem(BUILDER_ONBOARDING_KEY) && !isNew) {
-      setShowOnboarding(true)
+    setCanvasViewMode(readStoredCanvasView(effectiveTemplateId))
+  }, [effectiveTemplateId])
+
+  const handleCanvasViewModeChange = useCallback(
+    (mode: CanvasViewMode) => {
+      setCanvasViewMode(mode)
+      writeStoredCanvasView(effectiveTemplateId, mode)
+    },
+    [effectiveTemplateId]
+  )
+
+  useEffect(() => {
+    if (!localStorage.getItem(BUILDER_ONBOARDING_KEY)) {
+      setOnboardingOpen(true)
     }
-  }, [isNew])
+  }, [])
 
   useEffect(() => {
     if (isNew || !templateId) {
@@ -162,16 +187,52 @@ export default function LessonBuilderWorkspace({
     setDuration(starter.duration)
     setLessonGoal(starter.lesson_goal)
     setBlocks(starter.blocks().map((b, i) => ({ ...b, sort_order: i })))
-    setShowStarterPicker(false)
     markDirty()
   }
 
-  const addBlock = (type: LessonBlockType, atIndex?: number) => {
+  const applyLessonImport = useCallback(
+    (result: LessonImportResult) => {
+      const { lesson } = result
+      setTitle(lesson.title)
+      setShortDescription(lesson.short_description ?? '')
+      setCategory(lesson.category ?? 'Grooves')
+      setSkillLevel(lesson.skill_level ?? 'beginner')
+      setDuration(lesson.estimated_duration_minutes ?? 30)
+      setLessonGoal(lesson.lesson_goal ?? '')
+      setTeacherNotes(lesson.teacher_notes ?? '')
+      setStudentInstructions(lesson.student_instructions ?? '')
+      setPracticeAssignment(lesson.practice_assignment ?? '')
+      setTags(lesson.tags ?? [])
+      setBlocks(result.blocks)
+      setSelectedBlockId(result.blocks[0]?.id ?? null)
+      setCollapsedIds(new Set())
+      handleCanvasViewModeChange(result.canvasViewMode)
+      writeStoredCanvasView(effectiveTemplateId, result.canvasViewMode)
+      markDirty()
+    },
+    [effectiveTemplateId, handleCanvasViewModeChange, markDirty]
+  )
+
+  const addBlock = (
+    type: LessonBlockType,
+    atIndex?: number,
+    bentoPlacement?: { gridCol: number; gridRow: number }
+  ) => {
     const meta = getBlockMeta(type)
+    let content = defaultBlockContent(type, meta?.label) as LessonBlockContent
+    if (canvasViewMode === 'bento') {
+      const placement = bentoPlacement
+        ? layoutForBentoCell(type, bentoPlacement.gridCol, bentoPlacement.gridRow)
+        : nextBentoPlacement(blocks, type)
+      content = {
+        ...(content as object),
+        canvasLayout: placement,
+      } as LessonBlockContent
+    }
     const newBlock: EditableBlock = {
       id: crypto.randomUUID(),
       block_type: type,
-      content: defaultBlockContent(type, meta?.label) as LessonBlockContent,
+      content,
       sort_order: blocks.length,
     }
     let next: EditableBlock[]
@@ -182,9 +243,11 @@ export default function LessonBuilderWorkspace({
     } else {
       next = [...blocks, newBlock]
     }
+    if (canvasViewMode === 'bento') {
+      next = autoLayoutBentoBlocks(next)
+    }
     setBlocks(next)
     setSelectedBlockId(newBlock.id)
-    setInsertAtIndex(null)
     markDirty()
   }
 
@@ -223,10 +286,12 @@ export default function LessonBuilderWorkspace({
       } else {
         await updateLessonTemplate(id, payload)
       }
+      const blocksToSave = prepareBlocksForSave(blocks, canvasViewMode)
       await saveTemplateBlocks(
         id,
-        blocks.map((b, i) => ({ block_type: b.block_type, content: b.content, sort_order: i }))
+        blocksToSave.map((b, i) => ({ block_type: b.block_type, content: b.content, sort_order: i }))
       )
+      setBlocks(blocksToSave)
       setDirty(false)
       setSaveNotice('Lesson saved')
       window.setTimeout(() => setSaveNotice(null), 4000)
@@ -271,8 +336,23 @@ export default function LessonBuilderWorkspace({
     )
   }
 
-  if (teachMode) {
-    return <TeachModeView title={title} blocks={blocks} onExit={() => setTeachMode(false)} />
+  if (studentPreviewOpen) {
+    return (
+      <StudentPreviewOverlay
+        title={title}
+        lessonGoal={lessonGoal}
+        shortDescription={shortDescription}
+        studentInstructions={studentInstructions}
+        practiceAssignment={practiceAssignment}
+        category={category}
+        skillLevel={skillLevel}
+        estimatedDurationMinutes={duration}
+        authorName={displayName(userProfile) || 'Mark'}
+        blocks={blocks}
+        layoutMode={canvasViewMode}
+        onExit={() => setStudentPreviewOpen(false)}
+      />
+    )
   }
 
   return (
@@ -319,6 +399,26 @@ export default function LessonBuilderWorkspace({
         </nav>
 
         <div className="lesson-builder__header-right">
+          {!showStudents && userRole === 'admin' ? (
+            <LessonJsonImportExport
+              exportInput={{
+                title,
+                shortDescription,
+                category,
+                skillLevel,
+                duration,
+                lessonGoal,
+                teacherNotes,
+                studentInstructions,
+                practiceAssignment,
+                tags,
+                canvasViewMode,
+                blocks,
+              }}
+              hasExistingContent={Boolean(title.trim() && title !== 'Untitled Lesson') || blocks.length > 0}
+              onImport={applyLessonImport}
+            />
+          ) : null}
           <div className="lesson-builder__save-group">
             <span className={`lesson-builder__save-status ${dirty ? 'lesson-builder__save-status--dirty' : ''}`}>
               {saving ? (
@@ -345,12 +445,20 @@ export default function LessonBuilderWorkspace({
             </button>
           </div>
           {!showStudents ? (
-            <button type="button" className="lesson-builder__btn lesson-builder__btn--teach" onClick={() => setTeachMode(true)}>
-              <i className="bi bi-bullseye" /> Teach Mode
+            <button type="button" className="lesson-builder__btn lesson-builder__btn--preview" onClick={() => setStudentPreviewOpen(true)}>
+              <i className="bi bi-eye" /> Student preview
             </button>
           ) : null}
-          <button type="button" className="lesson-builder__btn" title="Help" onClick={() => setShowOnboarding(true)}>
-            <i className="bi bi-question-circle" />
+          <button
+            type="button"
+            className="lesson-builder__btn"
+            title="Help & documentation"
+            onClick={() => {
+              setHelpFirstVisit(false)
+              setHelpOpen(true)
+            }}
+          >
+            <i className="bi bi-question-circle" /> Help
           </button>
         </div>
       </header>
@@ -426,83 +534,54 @@ export default function LessonBuilderWorkspace({
               )
             })}
           </div>
-          <button type="button" className="lesson-builder__add-block" onClick={() => setShowBlockPicker(true)}>
-            <i className="bi bi-plus-lg" /> Add block
-          </button>
         </aside>
 
-        <main className="lesson-builder__canvas-wrap">
-          <div
-            className="lesson-builder__canvas"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setSelectedBlockId(null)
-            }}
-          >
-            {blocks.length === 0 ? (
-              <div className="lesson-builder__canvas-empty">
-                <h3>Start building your lesson</h3>
-                <p>Add blocks to create your teaching flow — video demos, notation, tempo goals, and practice tasks.</p>
-                <button type="button" className="lesson-builder__btn lesson-builder__btn--primary" onClick={() => setShowBlockPicker(true)}>
-                  <i className="bi bi-plus-lg" /> Add your first block
-                </button>
-              </div>
-            ) : (
-              blocks.map((block, index) => (
-                <div key={block.id} id={`block-${block.id}`}>
-                  <div className="canvas-insert">
-                    <button type="button" onClick={() => { setInsertAtIndex(index); setShowBlockPicker(true) }}>
-                      + Insert block
-                    </button>
-                  </div>
-                  <CanvasBlockCard
-                    block={block}
-                    index={index}
-                    selected={selectedBlockId === block.id}
-                    collapsed={collapsedIds.has(block.id)}
-                    previewMode={false}
-                    userId={userId}
-                    onContentUpdate={(content) => updateBlockContent(index, content)}
-                    onSelect={() => selectBlock(block.id)}
-                    onToggleCollapse={() => {
-                      setCollapsedIds((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(block.id)) next.delete(block.id)
-                        else next.add(block.id)
-                        return next
-                      })
-                    }}
-                    onDuplicate={() => {
-                      const dup = duplicateBlock(block)
-                      const next = [...blocks]
-                      next.splice(index + 1, 0, dup)
-                      setBlocks(next.map((b, i) => ({ ...b, sort_order: i })))
-                      markDirty()
-                    }}
-                    onDelete={() => {
-                      setBlocks(blocks.filter((b) => b.id !== block.id).map((b, i) => ({ ...b, sort_order: i })))
-                      if (selectedBlockId === block.id) setSelectedBlockId(null)
-                      markDirty()
-                    }}
-                    onDragStart={setDragIndex}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(toIndex) => {
-                      if (dragIndex != null) {
-                        setBlocks(reorderBlocks(blocks, dragIndex, toIndex))
-                        setDragIndex(null)
-                        markDirty()
-                      }
-                    }}
-                  />
-                </div>
-              ))
-            )}
-            {blocks.length > 0 ? (
-              <button type="button" className="lesson-builder__add-block" style={{ marginTop: '0.5rem' }} onClick={() => setShowBlockPicker(true)}>
-                <i className="bi bi-plus-lg" /> Add block
-              </button>
-            ) : null}
-          </div>
-        </main>
+        <div className="lesson-builder__editor-zone">
+        <LessonBuilderCanvas
+          blocks={blocks}
+          selectedBlockId={selectedBlockId}
+          collapsedIds={collapsedIds}
+          dragIndex={dragIndex}
+          viewMode={canvasViewMode}
+          onViewModeChange={handleCanvasViewModeChange}
+          userId={userId}
+          showStarters
+          onApplyStarter={applyStarter}
+          onSelectBlock={selectBlock}
+          onToggleCollapse={(blockId) => {
+            setCollapsedIds((prev) => {
+              const next = new Set(prev)
+              if (next.has(blockId)) next.delete(blockId)
+              else next.add(blockId)
+              return next
+            })
+          }}
+          onAddBlock={addBlock}
+          onUpdateBlockContent={updateBlockContent}
+          onDuplicateBlock={(index) => {
+            const dup = duplicateBlock(blocks[index])
+            if (canvasViewMode === 'bento') {
+              const content = { ...(dup.content as object) } as Record<string, unknown>
+              delete content.canvasLayout
+              dup.content = content as LessonBlockContent
+            }
+            let next = [...blocks]
+            next.splice(index + 1, 0, dup)
+            next = next.map((b, i) => ({ ...b, sort_order: i }))
+            if (canvasViewMode === 'bento') next = autoLayoutBentoBlocks(next)
+            setBlocks(next)
+            markDirty()
+          }}
+          onDeleteBlock={(blockId) => {
+            setBlocks(blocks.filter((b) => b.id !== blockId).map((b, i) => ({ ...b, sort_order: i })))
+            if (selectedBlockId === blockId) setSelectedBlockId(null)
+            markDirty()
+          }}
+          onBlocksChange={setBlocks}
+          onDragIndexChange={setDragIndex}
+          onClearSelection={() => setSelectedBlockId(null)}
+          onDirty={markDirty}
+        />
 
         <LessonBuilderInspector
           open={inspectorOpen}
@@ -541,28 +620,36 @@ export default function LessonBuilderWorkspace({
             markDirty()
           }}
         />
+        </div>
       </div>
       )}
 
-      {showBlockPicker ? (
-        <BlockPickerModal
-          onPick={(type) => addBlock(type, insertAtIndex ?? undefined)}
-          onClose={() => {
-            setShowBlockPicker(false)
-            setInsertAtIndex(null)
+      {onboardingOpen ? (
+        <LessonBuilderOnboardingPrompt
+          hasBlocks={blocks.length > 0}
+          onDismiss={() => {
+            localStorage.setItem(BUILDER_ONBOARDING_KEY, '1')
+            setOnboardingOpen(false)
+          }}
+          onOpenGuide={() => {
+            localStorage.setItem(BUILDER_ONBOARDING_KEY, '1')
+            setOnboardingOpen(false)
+            setHelpFirstVisit(true)
+            setHelpOpen(true)
           }}
         />
       ) : null}
-      {showStarterPicker ? (
-        <StarterTemplatePicker
-          onSelect={applyStarter}
+
+      {helpOpen ? (
+        <LessonBuilderHelp
           onClose={() => {
-            setShowStarterPicker(false)
-            if (blocks.length === 0) setShowOnboarding(true)
+            setHelpOpen(false)
+            setHelpFirstVisit(false)
           }}
+          isFirstVisit={helpFirstVisit}
+          initialPageId={helpFirstVisit ? 'welcome' : undefined}
         />
       ) : null}
-      {showOnboarding ? <BuilderOnboarding onDismiss={() => setShowOnboarding(false)} /> : null}
     </div>
   )
 }

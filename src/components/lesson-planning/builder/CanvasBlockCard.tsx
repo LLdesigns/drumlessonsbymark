@@ -1,9 +1,15 @@
-import { isHtmlBody, parseStickingPattern, plainTextFromHtml, sanitizeLessonHtml } from '../../../lib/block-content-utils'
+import { normalizeLessonTextHtml, parseStickingPattern } from '../../../lib/block-content-utils'
+import { normalizeDrumNotationContent, notationHasNotes } from '../../../lib/drum-notation'
+import { instrumentLabel, normalizeMusicNotationContent } from '../../../lib/music-notation'
 import { embedVideoUrl } from '../../../lib/lesson-planning-constants'
-import type { ChecklistBlockContent, RudimentBlockContent } from '../../../types/lesson-planning'
+import type { ChecklistBlockContent, DrumNotationBlockContent, RudimentBlockContent } from '../../../types/lesson-planning'
+import type { BlockCanvasLayout } from '../../../lib/lesson-builder-canvas-layout'
 import { getBlockMeta, getBlockPreview, getBlockTitle, type EditableBlock } from '../../../lib/lesson-builder-utils'
 import type { LessonBlockContent } from '../../../types/lesson-planning'
+import type { LessonBlockRef } from '../../../lib/practice-task-utils'
 import CanvasBlockEditor from './CanvasBlockEditor'
+import DrumNotationView from '../blocks/DrumNotationView'
+import MusicNotationStaffView from '../blocks/MusicNotationStaffView'
 
 interface CanvasBlockCardProps {
   block: EditableBlock
@@ -12,6 +18,10 @@ interface CanvasBlockCardProps {
   collapsed: boolean
   previewMode: boolean
   userId?: string
+  siblingBlocks?: LessonBlockRef[]
+  bentoMode?: boolean
+  layout?: BlockCanvasLayout
+  onResize?: () => void
   onSelect: () => void
   onToggleCollapse: () => void
   onDuplicate: () => void
@@ -19,7 +29,7 @@ interface CanvasBlockCardProps {
   onContentUpdate?: (content: LessonBlockContent) => void
   onDragStart: (index: number) => void
   onDragOver: (e: React.DragEvent, index: number) => void
-  onDrop: (index: number) => void
+  onDrop: (e: React.DragEvent, index: number) => void
 }
 
 export default function CanvasBlockCard({
@@ -29,6 +39,10 @@ export default function CanvasBlockCard({
   collapsed,
   previewMode,
   userId,
+  siblingBlocks = [],
+  bentoMode = false,
+  layout,
+  onResize,
   onSelect,
   onToggleCollapse,
   onDuplicate,
@@ -44,9 +58,36 @@ export default function CanvasBlockCard({
   const preview = getBlockPreview(block)
   const isEditing = !previewMode && selected && !!userId && !!onContentUpdate
 
+  const handleBodyClick = (e: React.MouseEvent) => {
+    if (!isEditing && !previewMode) {
+      e.stopPropagation()
+      onSelect()
+    }
+  }
+
   const renderPreview = () => {
     if (block.block_type === 'notation_image' && c.url) {
       return <img src={String(c.url)} alt="" className="lesson-notation-img" />
+    }
+    if (block.block_type === 'sequencer') {
+      const notation = normalizeDrumNotationContent(c as unknown as DrumNotationBlockContent)
+      if (notationHasNotes(notation)) {
+        return <DrumNotationView content={notation} compact />
+      }
+    }
+    if (block.block_type === 'notation') {
+      const music = normalizeMusicNotationContent(c)
+      return (
+        <div className="canvas-block__notation-preview">
+          <div className="canvas-block__notation-meta">
+            <span>{instrumentLabel(music.instrument)}</span>
+            <span>{music.tempo} BPM</span>
+            <span>{music.timeSignature}</span>
+          </div>
+          <MusicNotationStaffView content={music} size="compact" />
+          {music.caption ? <p className="canvas-block__notation-caption">{music.caption}</p> : null}
+        </div>
+      )
     }
     if (block.block_type === 'video' && c.url) {
       const embed = embedVideoUrl(String(c.url))
@@ -97,27 +138,26 @@ export default function CanvasBlockCard({
       )
     }
     if (block.block_type === 'text' && c.body) {
-      const body = String(c.body)
-      if (isHtmlBody(body)) {
-        return (
-          <div
-            className="canvas-block__preview canvas-block__preview--text lesson-rich-text lesson-rich-text--compact"
-            dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(body) }}
-          />
-        )
-      }
-      return <p className="canvas-block__preview canvas-block__preview--text">{plainTextFromHtml(body)}</p>
+      const html = normalizeLessonTextHtml(String(c.body))
+      if (!html) return null
+      return (
+        <div
+          className="canvas-block__preview canvas-block__preview--text lesson-rich-text lesson-rich-text--compact"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      )
     }
     return <p className="canvas-block__preview">{preview}</p>
   }
 
   return (
     <div
-      className={`canvas-block ${selected ? 'canvas-block--selected' : ''} ${collapsed ? 'canvas-block--collapsed' : ''} ${isEditing ? 'canvas-block--editing' : ''}`}
+      className={`canvas-block${selected ? ' canvas-block--selected' : ''}${collapsed ? ' canvas-block--collapsed' : ''}${isEditing ? ' canvas-block--editing' : ''}${bentoMode ? ' canvas-block--bento' : ''}`}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => {
         e.preventDefault()
-        onDrop(index)
+        e.stopPropagation()
+        onDrop(e, index)
       }}
     >
       <div className="canvas-block__head" onClick={onSelect}>
@@ -129,7 +169,7 @@ export default function CanvasBlockCard({
               e.stopPropagation()
               onDragStart(index)
             }}
-            title="Drag to reorder"
+            title={bentoMode ? 'Drag to reposition on grid' : 'Drag to reorder'}
           >
             <i className="bi bi-grip-vertical" />
           </span>
@@ -139,6 +179,11 @@ export default function CanvasBlockCard({
         <h4 className="canvas-block__title">{title}</h4>
         {!previewMode ? (
           <div className="canvas-block__actions" onClick={(e) => e.stopPropagation()}>
+            {bentoMode && onResize && layout ? (
+              <button type="button" onClick={onResize} title={`Width: ${layout.colSpan}/12 columns`}>
+                <i className="bi bi-arrows-angle-expand" />
+              </button>
+            ) : null}
             <button type="button" onClick={onToggleCollapse} title={collapsed ? 'Expand' : 'Collapse'}>
               <i className={`bi bi-chevron-${collapsed ? 'down' : 'up'}`} />
             </button>
@@ -152,12 +197,29 @@ export default function CanvasBlockCard({
         ) : null}
       </div>
       {!collapsed ? (
-        <div className="canvas-block__body">
+        <div
+          className={`canvas-block__body${!isEditing && !previewMode ? ' canvas-block__body--selectable' : ''}`}
+          onClick={handleBodyClick}
+        >
           {isEditing ? (
-            <CanvasBlockEditor block={block} userId={userId!} onUpdate={onContentUpdate!} />
+            <div className="canvas-block__editor" onClick={(e) => e.stopPropagation()}>
+            <CanvasBlockEditor
+              block={block}
+              userId={userId!}
+              siblingBlocks={siblingBlocks}
+              onUpdate={onContentUpdate!}
+            />
+            </div>
           ) : (
             renderPreview()
           )}
+        </div>
+      ) : block.block_type === 'notation' ? (
+        <div
+          className="canvas-block__body canvas-block__body--collapsed-preview canvas-block__body--selectable"
+          onClick={handleBodyClick}
+        >
+          {renderPreview()}
         </div>
       ) : null}
     </div>

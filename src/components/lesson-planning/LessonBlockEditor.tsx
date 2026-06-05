@@ -5,8 +5,10 @@ import {
   detectVideoSource,
   newChecklistItem,
 } from '../../lib/lesson-planning-constants'
+import { normalizeDrumNotationContent } from '../../lib/drum-notation'
 import { uploadStudioMedia } from '../../lib/studio-media-service'
-import type { LessonBlockContent, LessonBlockType } from '../../types/lesson-planning'
+import type { DrumNotationBlockContent, LessonBlockContent, LessonBlockType } from '../../types/lesson-planning'
+import DrumNotationBuilder from './blocks/DrumNotationBuilder'
 
 export interface EditableBlock {
   id: string
@@ -98,7 +100,7 @@ export default function LessonBlockEditor({ blocks, onChange, userId }: LessonBl
                 <textarea
                   className="studio-textarea"
                   rows={3}
-                  placeholder="Instructions, reminders, teaching notes…"
+                  placeholder="Written tutorial — explain what to learn and watch for…"
                   value={String(c.body ?? '')}
                   onChange={(e) => updateBlock(index, { body: e.target.value })}
                 />
@@ -125,6 +127,13 @@ export default function LessonBlockEditor({ blocks, onChange, userId }: LessonBl
                     onChange={(e) => updateBlock(index, { ...c, caption: e.target.value } as LessonBlockContent)}
                   />
                 </>
+              ) : null}
+
+              {block.block_type === 'sequencer' ? (
+                <DrumNotationBuilder
+                  content={normalizeDrumNotationContent(c as unknown as DrumNotationBlockContent)}
+                  onChange={(notation) => updateBlock(index, notation as unknown as LessonBlockContent)}
+                />
               ) : null}
 
               {block.block_type === 'video' ? (

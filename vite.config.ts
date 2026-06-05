@@ -131,22 +131,8 @@ export default defineConfig({
 
       output: {
 
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
-          if (
-            id.includes('node_modules/react-dom') ||
-            id.includes('node_modules/react-router') ||
-            id.includes('node_modules/react/')
-          ) {
-            return 'vendor-react'
-          }
-          if (id.includes('node_modules/@supabase')) return 'vendor-supabase'
-          if (id.includes('node_modules/@tanstack')) return 'vendor-query'
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/wavesurfer')) {
-            return 'vendor-media'
-          }
-          return 'vendor'
-        },
+        // Let Vite/Rollup split vendors automatically — custom manualChunks caused
+        // circular vendor ↔ vendor-react deps and broke React.forwardRef in production.
 
         chunkFileNames: 'assets/[name]-[hash].js',
 

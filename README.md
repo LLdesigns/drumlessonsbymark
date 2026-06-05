@@ -1,69 +1,88 @@
-# React + TypeScript + Vite
+# Play It Pro — Mark's Drum Studio Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Private studio web app for **Drum Lessons by Mark**: lesson planning, student practice, scheduling, and messaging. Teachers and admins use **studio**; students use **Console**.
 
-Currently, two official plugins are available:
+**Live site:** [drumlessonsbymark.com](https://www.drumlessonsbymark.com)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Stack
 
-## Expanding the ESLint configuration
+- **React 19** + **TypeScript** + **Vite**
+- **Supabase** — auth, database, storage
+- **TanStack Query** — cached API data
+- **PWA** — installable app with offline asset caching
+- **GitHub Pages** — production hosting (`npm run deploy`)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Features
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Lesson builder** — block-based lessons (text, video, audio, sequencer, notation, tempo, rudiment, checklist, resources)
+- **Stack & bento canvas** — vertical or 12-column grid layouts
+- **Student portal** — assigned lessons, practice tasks, progress
+- **Lesson library** — card and table views, assign to students
+- **Admin JSON import/export** — bulk lesson upload from AI-generated JSON
+- **Rich text, drum notation, music notation** — with playback and student preview
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## Quick start
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd play-it-pro-platform
+npm install
+cp .env.example .env   # add Supabase URL + anon key
+npm run dev              # http://127.0.0.1:5288
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Local dev server |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview production build |
+| `npm run deploy` | Build and publish to GitHub Pages |
+| `npm run setup:audio` | Copy/generate drum & instrument audio assets |
+| `npm run capture:help-screenshots` | Regenerate lesson-builder help PNGs (Playwright) |
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Environment
+
+Create `.env` from `.env.example`:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Optional: reCAPTCHA, push notification (VAPID) keys — see `.env.example`.
+
+## Database
+
+SQL migrations and one-shot setup live in `supabase/`. Run consolidated scripts in the Supabase SQL editor as documented in `supabase/sql/README.md`.
+
+## Lesson JSON (AI import)
+
+- **Knowledge base:** `play-it-pro-lesson-json-knowledgebase.md`
+- **Sample file:** `public/lesson-templates/sample-lesson-import.json`
+- **Import:** admin only — Lesson builder → **Import JSON**
+
+## Project layout
+
 ```
+src/
+  components/lesson-planning/   # Lesson builder, blocks, student view
+  components/studio/              # Shell, sidebar, profile
+  pages/studio/mark/              # Teacher/admin portal
+  pages/studio/student/           # Student portal
+  lib/                            # Services, notation, import/export, cache
+public/
+  help/lesson-builder/            # Help screenshots
+  audio/                          # Drum samples & instrument packs
+docs/                             # Extended internal documentation
+```
+
+## Deploy
+
+```bash
+npm run deploy
+```
+
+Pushes `dist/` to the `gh-pages` branch. Ensure GitHub Pages serves from that branch and that `homepage` in `package.json` matches your domain.
+
+## License
+
+Private — Drum Lessons by Mark / LL Designs.
